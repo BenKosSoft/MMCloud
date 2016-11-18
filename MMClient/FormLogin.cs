@@ -21,7 +21,7 @@ namespace MMClient
         private static ushort Port;
         private IPAddress ServerIp;
         private static string Username;
-        private BackgroundTask backgroudTask;
+        public BackgroundTask backgroudTask { get; set; }
 
         public form_login()
         {
@@ -41,6 +41,20 @@ namespace MMClient
         {
             txt_password.Enabled = false;
             this.FormClosing += Form_login_FormClosing;
+
+            this.KeyPress += Form_login_KeyPress;
+            txt_username.KeyPress += Form_login_KeyPress;
+            txt_ip.KeyPress += Form_login_KeyPress;
+            txt_port.KeyPress += Form_login_KeyPress;
+        }
+
+        private void Form_login_KeyPress(object sender, KeyPressEventArgs e)
+        {
+            if (e.KeyChar == (char)Keys.Return)
+            {
+                e.Handled = true;
+                btn_connect_Click(sender, e);
+            }
         }
 
         private void Form_login_FormClosing(object sender, FormClosingEventArgs e)
@@ -81,13 +95,12 @@ namespace MMClient
             Username = txt_username.Text;
             backgroudTask.Username = Username;
 
-            backgroudTask.ConnectToServer();
+            //backgroudTask.ConnectToServer();
             btn_connect.Enabled = false;
             this.Hide();
             form_client fc = new form_client();
             fc.backgroudTask = backgroudTask;
             fc.Show();
-
         }
     }
 }

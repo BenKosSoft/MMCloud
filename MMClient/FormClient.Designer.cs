@@ -28,6 +28,7 @@
         /// </summary>
         private void InitializeComponent()
         {
+            this.components = new System.ComponentModel.Container();
             this.btn_logout = new System.Windows.Forms.Button();
             this.lbl_user = new System.Windows.Forms.Label();
             this.label1 = new System.Windows.Forms.Label();
@@ -39,6 +40,9 @@
             this.btn_upload = new System.Windows.Forms.Button();
             this.rtb_activity = new System.Windows.Forms.RichTextBox();
             this.lbl_activity = new System.Windows.Forms.Label();
+            this.lbl_uploadStatus = new System.Windows.Forms.Label();
+            this.tt_fileListTip = new System.Windows.Forms.ToolTip(this.components);
+            this.lbl_refresh = new System.Windows.Forms.LinkLabel();
             this.SuspendLayout();
             // 
             // btn_logout
@@ -49,6 +53,7 @@
             this.btn_logout.TabIndex = 0;
             this.btn_logout.Text = "Logout";
             this.btn_logout.UseVisualStyleBackColor = true;
+            this.btn_logout.Click += new System.EventHandler(this.btn_logout_Click);
             // 
             // lbl_user
             // 
@@ -62,7 +67,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(9, 270);
+            this.label1.Location = new System.Drawing.Point(9, 263);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(114, 13);
             this.label1.TabIndex = 2;
@@ -70,19 +75,20 @@
             // 
             // txt_filepath
             // 
-            this.txt_filepath.Location = new System.Drawing.Point(12, 286);
+            this.txt_filepath.Location = new System.Drawing.Point(12, 279);
             this.txt_filepath.Name = "txt_filepath";
             this.txt_filepath.Size = new System.Drawing.Size(184, 20);
             this.txt_filepath.TabIndex = 3;
             // 
             // btn_browse
             // 
-            this.btn_browse.Location = new System.Drawing.Point(201, 284);
+            this.btn_browse.Location = new System.Drawing.Point(201, 277);
             this.btn_browse.Name = "btn_browse";
             this.btn_browse.Size = new System.Drawing.Size(75, 23);
             this.btn_browse.TabIndex = 4;
             this.btn_browse.Text = "Browse";
             this.btn_browse.UseVisualStyleBackColor = true;
+            this.btn_browse.Click += new System.EventHandler(this.btn_browse_Click);
             // 
             // lb_fileList
             // 
@@ -106,18 +112,19 @@
             this.label2.AutoSize = true;
             this.label2.Location = new System.Drawing.Point(9, 230);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(137, 13);
+            this.label2.Size = new System.Drawing.Size(145, 13);
             this.label2.TabIndex = 7;
-            this.label2.Text = "Click an item to download...";
+            this.label2.Text = "Click an item for more options";
             // 
             // btn_upload
             // 
-            this.btn_upload.Location = new System.Drawing.Point(201, 313);
+            this.btn_upload.Location = new System.Drawing.Point(201, 306);
             this.btn_upload.Name = "btn_upload";
             this.btn_upload.Size = new System.Drawing.Size(75, 23);
             this.btn_upload.TabIndex = 8;
             this.btn_upload.Text = "Upload";
             this.btn_upload.UseVisualStyleBackColor = true;
+            this.btn_upload.Click += new System.EventHandler(this.btn_upload_Click);
             // 
             // rtb_activity
             // 
@@ -136,11 +143,33 @@
             this.lbl_activity.TabIndex = 10;
             this.lbl_activity.Text = "Activity:";
             // 
+            // lbl_uploadStatus
+            // 
+            this.lbl_uploadStatus.AutoSize = true;
+            this.lbl_uploadStatus.Location = new System.Drawing.Point(9, 306);
+            this.lbl_uploadStatus.Name = "lbl_uploadStatus";
+            this.lbl_uploadStatus.Size = new System.Drawing.Size(74, 13);
+            this.lbl_uploadStatus.TabIndex = 11;
+            this.lbl_uploadStatus.Text = "Upload Status";
+            // 
+            // lbl_refresh
+            // 
+            this.lbl_refresh.AutoSize = true;
+            this.lbl_refresh.Location = new System.Drawing.Point(228, 51);
+            this.lbl_refresh.Name = "lbl_refresh";
+            this.lbl_refresh.Size = new System.Drawing.Size(44, 13);
+            this.lbl_refresh.TabIndex = 12;
+            this.lbl_refresh.TabStop = true;
+            this.lbl_refresh.Text = "Refresh";
+            this.lbl_refresh.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lbl_refresh_LinkClicked);
+            // 
             // form_client
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(284, 526);
+            this.Controls.Add(this.lbl_refresh);
+            this.Controls.Add(this.lbl_uploadStatus);
             this.Controls.Add(this.lbl_activity);
             this.Controls.Add(this.rtb_activity);
             this.Controls.Add(this.btn_upload);
@@ -173,6 +202,9 @@
         private System.Windows.Forms.Button btn_upload;
         private System.Windows.Forms.RichTextBox rtb_activity;
         private System.Windows.Forms.Label lbl_activity;
+        private System.Windows.Forms.Label lbl_uploadStatus;
+        private System.Windows.Forms.ToolTip tt_fileListTip;
+        private System.Windows.Forms.LinkLabel lbl_refresh;
     }
 }
 
