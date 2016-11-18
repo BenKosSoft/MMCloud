@@ -182,7 +182,7 @@
             this.Controls.Add(this.lbl_user);
             this.Controls.Add(this.btn_logout);
             this.Name = "form_client";
-            this.Text = "Client";
+            this.Text = "MMCloud - Client";
             this.Load += new System.EventHandler(this.form_client_Load);
             this.ResumeLayout(false);
             this.PerformLayout();

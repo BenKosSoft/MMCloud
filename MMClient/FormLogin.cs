@@ -99,7 +99,7 @@ namespace MMClient
             btn_connect.Enabled = false;
             this.Hide();
             form_client fc = new form_client();
-            fc.backgroudTask = backgroudTask;
+            fc.backgroundTask = backgroudTask;
             fc.Show();
         }
     }

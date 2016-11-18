@@ -33,6 +33,7 @@ namespace MMServer
             MaximizeBox = false;
             // Set the start position of the form to the center of the screen.
             StartPosition = FormStartPosition.CenterScreen;
+
             InitializeComponent();
         }
 
@@ -63,7 +64,7 @@ namespace MMServer
             sw.Flush();
             sw.Close();
 
-            writeOnConsol("Cloud path is selected");
+            writeOnConsole("Cloud path is selected");
         }
 
         private void startServer_Click(object sender, EventArgs e)
@@ -71,40 +72,40 @@ namespace MMServer
             ushort port;
             if(!UInt16.TryParse(portText.Text, out port))
             {
-                writeOnConsol("Port number is invalid, please try again...");
+                writeOnConsole("Port number is invalid, please try again...");
                 MessageBox.Show("Port number is invalid!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 portText.Clear();
                 return;
             }
             if (!Directory.Exists(cloudPath.Text))
             {
-                writeOnConsol("Folder path is invalid, please try again...");
+                writeOnConsole("Folder path is invalid, please try again...");
                 MessageBox.Show("Folder path is invalid!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 portText.Clear();
                 return;
             }
             serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
-            writeOnConsol("Setting up server...");
+            writeOnConsole("Setting up server...");
             serverSocket.Bind(new IPEndPoint(getMyIP(), port));
             if (serverSocket.IsBound)
             {
                 serverSocket.Listen(100);
                 serverSocket.BeginAccept(AcceptCallback, null);
                 changeActivenessOfItems();
-                writeOnConsol("Server setup complete...");
+                writeOnConsole("Server setup complete...");
 
                 //create .log file
                 string logFile = Path.Combine(cloudPath.Text, ".log.");
                 if (!File.Exists(logFile))
                 {
                     File.Create(logFile);
-                    writeOnConsol("Log file is created...");
+                    writeOnConsole("Log file is created...");
                 }
             }
             else
             {
-                writeOnConsol("Server is not bound, please try again...");
+                writeOnConsole("Server is not bound, please try again...");
             }
         }
 
@@ -153,14 +154,14 @@ namespace MMServer
 
             if (!availableUser)
             {
-                writeOnConsol(username + " is already in the system...");
+                writeOnConsole(username + " is already in the system...");
                 current.Shutdown(SocketShutdown.Both);
                 current.Disconnect(false);
                 current.Close();
             }
             else
             {
-                writeOnConsol(username + " is connected, welcome to the cloud...");
+                writeOnConsole(username + " is connected, welcome to the cloud...");
                 clientSockets.Add(current, username);
                 if (Directory.Exists(Path.Combine(cloudPath.Text, username))){ //if user exists return her files.
                     string newPath = Path.Combine(cloudPath.Text, username, ".shared.");
@@ -177,7 +178,7 @@ namespace MMServer
                 }else{ //create user directory
                     string newPath = Path.Combine(cloudPath.Text, username);
                     Directory.CreateDirectory(newPath);
-                    writeOnConsol(username + " directory is created...");
+                    writeOnConsole(username + " directory is created...");
                     string newPathPath = Path.Combine(newPath, ".shared.");
                     File.CreateText(newPathPath);
                 }
@@ -192,7 +193,7 @@ namespace MMServer
             clientSockets.TryGetValue(current, out username);
             if (!IsSocketConnected(current))
             {
-                writeOnConsol(username + " is disconnected from Server...");
+                writeOnConsole(username + " is disconnected from Server...");
                 return;
             }
 
@@ -216,14 +217,14 @@ namespace MMServer
 
             if (text.Equals("pre"))
             {
-                writeOnConsol("File is coming...");
+                writeOnConsole("File is coming...");
                 string msg = "File is coming... Please wait...";
                 byte[] data = Encoding.ASCII.GetBytes(msg);
                 current.Send(data);
             }
             else if (text.Equals("post"))
             {
-                writeOnConsol("File upload is done...");
+                writeOnConsole("File upload is done...");
                 string msg = "File upload is done...";
                 byte[] data = Encoding.ASCII.GetBytes(msg);
                 current.Send(data);
@@ -238,7 +239,7 @@ namespace MMServer
                 current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
             }catch(Exception e)
             {
-                writeOnConsol(username + " is disconnected from Server...");
+                writeOnConsole(username + " is disconnected from Server...");
                 return;
             }
         }
@@ -257,7 +258,7 @@ namespace MMServer
             }
 
             serverSocket.Close();
-            writeOnConsol("Good bye Server");
+            writeOnConsole("Good bye Server");
         }
 
         private void stopServer_Click(object sender, EventArgs e)
@@ -269,7 +270,7 @@ namespace MMServer
             }
             catch(Exception ex)
             {
-                writeOnConsol(ex.Message);
+                writeOnConsole(ex.Message);
             }
         }
 
@@ -282,7 +283,7 @@ namespace MMServer
             browseButton.Enabled = !browseButton.Enabled;
         }
 
-        private void writeOnConsol(string text)
+        private void writeOnConsole(string text)
         {
             StringBuilder sb = new StringBuilder().Append("\n>> ").Append(text);
             Invoke((MethodInvoker)delegate
