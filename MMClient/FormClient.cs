@@ -39,7 +39,7 @@ namespace MMClient
             lbl_uploadStatus.Text = "No file chosen...";
 
             //Update activity
-            writeOnConsole("Server connection successful");
+            writeOnConsole("Server connection successful ip:port = " + backgroundTask.ServerIp + ":" + backgroundTask.Port);
             writeOnConsole("User logged in username: " + backgroundTask.Username);
 
             //Set up the delays for tool tip
@@ -106,8 +106,7 @@ namespace MMClient
 
             filesToUpload[0] = filesToUpload[0].Substring(1);
             filesToUpload[filesToUpload.Length - 1] = filesToUpload[filesToUpload.Length - 1].Substring(0, filesToUpload[filesToUpload.Length - 1].Length - 2);
-
-            //TODO: upload request
+            
             foreach (string s in filesToUpload)
             {
                 bool retry = false;
@@ -116,11 +115,13 @@ namespace MMClient
                 {
                     if (File.Exists(s))
                     {
+
                         //TODO: IMPLEMENT HERE
                     }
                     else
                     {
                         retry = false;
+                        writeOnConsole("Requested file could not be found: " + s);
                         //Configure warning message.
                         string body = new StringBuilder().Append("Specfied file ").Append(s).Append(" cannot be found!").ToString();
                         string title = "File cannot be found";

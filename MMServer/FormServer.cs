@@ -42,7 +42,9 @@ namespace MMServer
             ipLabel.Text = getMyIP().ToString();
             logText.Text = ">> Hello Server";
 
-            string path = "C:\\Users\\Mert\\Documents\\cloud\\.path";
+            StringBuilder sb = new StringBuilder();
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            path = sb.Append(path).Append(@"\MMCloud\.path").ToString();
             if (File.Exists(path))
             {
                 string [] paths = File.ReadAllLines(path);
@@ -58,7 +60,9 @@ namespace MMServer
             if (fbd.ShowDialog() == DialogResult.OK)
                 cloudPath.Text = fbd.SelectedPath;
 
-            string path = "C:\\Users\\Mert\\Documents\\cloud\\.path";
+            StringBuilder sb = new StringBuilder();
+            string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+            path = sb.Append(path).Append(@"\MMCloud\.path").ToString();
             StreamWriter sw = File.CreateText(path);
             sw.WriteLine(cloudPath.Text.ToString());
             sw.Flush();
