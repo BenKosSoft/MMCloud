@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -15,6 +16,9 @@ namespace MMServer
 {
     public partial class Form_Server : Form
     {
+        // Thread signal.
+        public static ManualResetEvent allDone = new ManualResetEvent(false);
+
         private static Socket serverSocket = null;
         private static Dictionary<Socket,string> clientSockets = new Dictionary<Socket,string>();
 
@@ -36,6 +40,13 @@ namespace MMServer
         {
             ipLabel.Text = getMyIP().ToString();
             logText.Text = ">> Hello Server";
+
+            string path = "C:\\Users\\Mert\\Documents\\cloud\\.path";
+            if (File.Exists(path))
+            {
+                string [] paths = File.ReadAllLines(path);
+                cloudPath.Text = paths[0];
+            }
         }
 
         private void browseButton_Click(object sender, EventArgs e)
@@ -46,7 +57,13 @@ namespace MMServer
             if (fbd.ShowDialog() == DialogResult.OK)
                 cloudPath.Text = fbd.SelectedPath;
 
-            writeOnLog("Cloud path is selected");
+            string path = "C:\\Users\\Mert\\Documents\\cloud\\.path";
+            StreamWriter sw = File.CreateText(path);
+            sw.WriteLine(cloudPath.Text.ToString());
+            sw.Flush();
+            sw.Close();
+
+            writeOnConsol("Cloud path is selected");
         }
 
         private void startServer_Click(object sender, EventArgs e)
@@ -54,49 +71,176 @@ namespace MMServer
             ushort port;
             if(!UInt16.TryParse(portText.Text, out port))
             {
-                writeOnLog("Port number is invalid, please try again...");
+                writeOnConsol("Port number is invalid, please try again...");
                 MessageBox.Show("Port number is invalid!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 portText.Clear();
                 return;
             }
             if (!Directory.Exists(cloudPath.Text))
             {
-                writeOnLog("Folder path is invalid, please try again...");
+                writeOnConsol("Folder path is invalid, please try again...");
                 MessageBox.Show("Folder path is invalid!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 portText.Clear();
                 return;
             }
             serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
-            writeOnLog("Setting up server...");
+            writeOnConsol("Setting up server...");
             serverSocket.Bind(new IPEndPoint(getMyIP(), port));
             if (serverSocket.IsBound)
             {
-                serverSocket.Listen(0);
+                serverSocket.Listen(100);
                 serverSocket.BeginAccept(AcceptCallback, null);
                 changeActivenessOfItems();
-                writeOnLog("Server setup complete...");
+                writeOnConsol("Server setup complete...");
+
+                //create .log file
+                string logFile = Path.Combine(cloudPath.Text, ".log.");
+                if (!File.Exists(logFile))
+                {
+                    File.Create(logFile);
+                    writeOnConsol("Log file is created...");
+                }
             }
             else
             {
-                writeOnLog("Server is not bound, please try again...");
+                writeOnConsol("Server is not bound, please try again...");
             }
         }
 
-        private static void AcceptCallback(IAsyncResult AR)
+        private void AcceptCallback(IAsyncResult AR)
         {
+
+            // Signal the main thread to continue.
+            allDone.Set(); //?? burada kod patliyor olabilir...
+
             Socket socket;
 
             try
             {
                 socket = serverSocket.EndAccept(AR);
-                //socket.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, InitialCallback, socket);
+                socket.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, InitialCallback, socket);
             }
             catch (ObjectDisposedException) // I cannot seem to avoid this (on exit when properly closing sockets)
             {
                 return;
             }
             serverSocket.BeginAccept(AcceptCallback, null);
+        }
+
+        private void InitialCallback(IAsyncResult AR)
+        {
+            Socket current = (Socket)AR.AsyncState;
+
+            int received;
+
+            try
+            {
+                received = current.EndReceive(AR);
+            }
+            catch (SocketException)
+            {
+                Console.WriteLine("Client forcefully disconnected");
+                current.Close();
+                return;
+            }
+
+            byte[] recBuf = new byte[received];
+            Array.Copy(buffer, recBuf, received);
+            string username = Encoding.ASCII.GetString(recBuf);
+
+            bool availableUser = !clientSockets.ContainsValue(username);
+
+            if (!availableUser)
+            {
+                writeOnConsol(username + " is already in the system...");
+                current.Shutdown(SocketShutdown.Both);
+                current.Disconnect(false);
+                current.Close();
+            }
+            else
+            {
+                writeOnConsol(username + " is connected, welcome to the cloud...");
+                clientSockets.Add(current, username);
+                if (Directory.Exists(Path.Combine(cloudPath.Text, username))){ //if user exists return her files.
+                    string newPath = Path.Combine(cloudPath.Text, username, ".shared.");
+                    string [] files = File.ReadAllLines(newPath);
+                    foreach(string s in files)
+                    {
+                        string[] info = s.Split(':');
+                        string fileName = info[0];
+                        uint sizeInKB = UInt32.Parse(info[1]);
+                        string date = info[2];
+                        string owner = info[3];
+                        string[] users = info[4].Split('|');
+                    }
+                }else{ //create user directory
+                    string newPath = Path.Combine(cloudPath.Text, username);
+                    Directory.CreateDirectory(newPath);
+                    writeOnConsol(username + " directory is created...");
+                    string newPathPath = Path.Combine(newPath, ".shared.");
+                    File.CreateText(newPathPath);
+                }
+                current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+            }
+        }
+
+        private void ReceiveCallback(IAsyncResult AR)
+        {
+            Socket current = (Socket)AR.AsyncState;
+            string username;
+            clientSockets.TryGetValue(current, out username);
+            if (!IsSocketConnected(current))
+            {
+                writeOnConsol(username + " is disconnected from Server...");
+                return;
+            }
+
+            int received;
+            try
+            {
+                received = current.EndReceive(AR);
+            }
+            catch (SocketException)
+            {
+                Console.WriteLine("Client forcefully disconnected");
+                // Don't shutdown because the socket may be disposed and its disconnected anyway.
+                current.Close();
+                clientSockets.Remove(current);
+                return;
+            }
+
+            byte[] recBuf = new byte[received];
+            Array.Copy(buffer, recBuf, received);
+            string text = Encoding.ASCII.GetString(recBuf);
+
+            if (text.Equals("pre"))
+            {
+                writeOnConsol("File is coming...");
+                string msg = "File is coming... Please wait...";
+                byte[] data = Encoding.ASCII.GetBytes(msg);
+                current.Send(data);
+            }
+            else if (text.Equals("post"))
+            {
+                writeOnConsol("File upload is done...");
+                string msg = "File upload is done...";
+                byte[] data = Encoding.ASCII.GetBytes(msg);
+                current.Send(data);
+            }
+            else
+            {
+                //string newPath = Path.Combine(cloudPath, username, filename????);
+                //AppendAllBytes(newPath, buffer);
+            }
+            try
+            {
+                current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+            }catch(Exception e)
+            {
+                writeOnConsol(username + " is disconnected from Server...");
+                return;
+            }
         }
 
         /// <summary>
@@ -108,11 +252,12 @@ namespace MMServer
             foreach (Socket socket in clientSockets.Keys)
             {
                 socket.Shutdown(SocketShutdown.Both);
+                socket.Disconnect(false);
                 socket.Close();
             }
 
             serverSocket.Close();
-            writeOnLog("Good bye Server");
+            writeOnConsol("Good bye Server");
         }
 
         private void stopServer_Click(object sender, EventArgs e)
@@ -124,7 +269,7 @@ namespace MMServer
             }
             catch(Exception ex)
             {
-                writeOnLog(ex.Message);
+                writeOnConsol(ex.Message);
             }
         }
 
@@ -137,12 +282,25 @@ namespace MMServer
             browseButton.Enabled = !browseButton.Enabled;
         }
 
-        private void writeOnLog(string text)
+        private void writeOnConsol(string text)
         {
-            logText.AppendText(System.Environment.NewLine);
-            StringBuilder sb = new StringBuilder().Append(">> ").Append(text);
-            logText.AppendText(sb.ToString());
+            StringBuilder sb = new StringBuilder().Append("\n>> ").Append(text);
+            Invoke((MethodInvoker)delegate
+            {
+                logText.AppendText(sb.ToString());
+            });
+        }
 
+        public static void AppendAllBytes(string path, byte[] bytes)
+        {
+            bool isFileExists = File.Exists(path);
+
+            using (var stream = new FileStream(path, FileMode.Append))
+            {
+                if(isFileExists)
+                    stream.Seek(stream.Length, SeekOrigin.Begin);
+                stream.Write(bytes, 0, bytes.Length);
+            }
         }
 
         private static IPAddress getMyIP()
@@ -157,6 +315,15 @@ namespace MMServer
                 }
             }
             return IPAddress.Loopback;
+        }
+
+        private static bool IsSocketConnected(Socket s)
+        {
+            if (!s.Connected)
+            {
+                return false;
+            }
+            return !((s.Poll(1000, SelectMode.SelectRead) && (s.Available == 0)) || !s.Connected);
         }
     }
 }
