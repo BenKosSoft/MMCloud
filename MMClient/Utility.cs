@@ -10,7 +10,7 @@ using System.Windows.Forms;
 
 namespace MMClient
 {
-    public class BackgroundTask
+    public class Utility
     {
         public Socket ClientSocket { get; set; }
         public ushort Port { get; set; }

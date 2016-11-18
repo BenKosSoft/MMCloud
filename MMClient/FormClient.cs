@@ -5,6 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -14,7 +15,7 @@ namespace MMClient
 {
     public partial class form_client : Form
     {
-        public BackgroundTask backgroundTask { get; set; }
+        public Utility utility { get; set; }
 
         private string[] filesToUpload;
 
@@ -35,12 +36,14 @@ namespace MMClient
         private void form_client_Load(object sender, EventArgs e)
         {
             this.FormClosing += this.form_client_FormClosing;
-            lbl_user.Text = new StringBuilder().Append("Welcome ").Append(backgroundTask.Username).ToString();
+            lbl_user.Text = new StringBuilder().Append("Welcome ").Append(utility.Username).ToString();
             lbl_uploadStatus.Text = "No file chosen...";
 
+            //TODO: CALL request file list here
+
             //Update activity
-            writeOnConsole("Server connection successful ip:port = " + backgroundTask.ServerIp + ":" + backgroundTask.Port);
-            writeOnConsole("User logged in username: " + backgroundTask.Username);
+            writeOnConsole("Server connection successful ip:port = " + utility.ServerIp + ":" + utility.Port);
+            writeOnConsole("User logged in username: " + utility.Username);
 
             //Set up the delays for tool tip
             tt_fileListTip.AutoPopDelay = 5000;
@@ -65,17 +68,20 @@ namespace MMClient
             btn_logout.Enabled = false;
             this.Hide();
             form_login fl = new form_login();
-            fl.backgroudTask = new BackgroundTask();
+            fl.utility = new Utility();
             fl.Show();
         }
 
         private void lbl_refresh_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             //TODO: call request file list function here
+            writeOnConsole("User requested refreshing file list");
         }
 
         private void btn_browse_Click(object sender, EventArgs e)
         {
+            writeOnConsole("User browsing file system to chose a file.");
+
             OpenFileDialog openFileDialog = new OpenFileDialog();
 
             string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
@@ -94,6 +100,7 @@ namespace MMClient
                 }
                 txt_filepath.Text = sb.ToString();
                 lbl_uploadStatus.Text = "Files Selected...";
+                writeOnConsole("User chose files.");
             }
         }
 
@@ -115,8 +122,22 @@ namespace MMClient
                 {
                     if (File.Exists(s))
                     {
-
                         //TODO: IMPLEMENT HERE
+                        lbl_uploadStatus.Text = "Uploading " + s + "...";
+                        writeOnConsole("Uploading " + s);
+
+                        // Send a file fileName to the remote device with preBuffer and postBuffer data.
+
+                        // Create the preBuffer data.
+                        string string1 = String.Format("Start file transfer: {0}{1}", s, Environment.NewLine);
+                        byte[] preBuf = Encoding.UTF8.GetBytes(string1);
+
+                        // Create the postBuffer data.
+                        string string2 = String.Format("End file transfer: {0}{1}", s, Environment.NewLine);
+                        byte[] postBuf = Encoding.UTF8.GetBytes(string2);
+
+                        //Send file s with buffers and default flags to the remote device.
+                        utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(AsyncFileSendCallback), utility.ClientSocket);
                     }
                     else
                     {
@@ -147,6 +168,20 @@ namespace MMClient
                     }
                 } while (retry);
             }
+            lbl_uploadStatus.Text = "Upload done";
+            writeOnConsole("Upload is finished");
+            btn_upload.Enabled = true;
+        }
+
+        private void AsyncFileSendCallback(IAsyncResult ar)
+        {
+            //TODO: writeOnConsole("File uploaded:" + );
+            // Retrieve the socket from the state object.
+            Socket client = (Socket)ar.AsyncState;
+
+            // Complete sending the data to the remote device.
+            client.EndSendFile(ar);
+            //TODO: sendDone.Set();
         }
 
         private void writeOnConsole(string text)

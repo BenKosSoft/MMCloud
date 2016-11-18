@@ -21,7 +21,7 @@ namespace MMClient
         private static ushort Port;
         private IPAddress ServerIp;
         private static string Username;
-        public BackgroundTask backgroudTask { get; set; }
+        public Utility utility { get; set; }
 
         public form_login()
         {
@@ -32,7 +32,7 @@ namespace MMClient
             // Set the start position of the form to the center of the screen.
             StartPosition = FormStartPosition.CenterScreen;
 
-            backgroudTask = new BackgroundTask();
+            utility = new Utility();
 
             InitializeComponent();
         }
@@ -76,7 +76,7 @@ namespace MMClient
                 txt_ip.Clear();
                 return;
             }
-            backgroudTask.ServerIp = ServerIp;
+            utility.ServerIp = ServerIp;
 
             if (!UInt16.TryParse(txt_port.Text, out Port))
             {
@@ -84,7 +84,7 @@ namespace MMClient
                 txt_port.Clear();
                 return;
             }
-            backgroudTask.Port = Port;
+            utility.Port = Port;
 
             if (!Regex.IsMatch(txt_username.Text, @"^[\w\- ]+$"))
             {
@@ -93,13 +93,13 @@ namespace MMClient
                 return;
             }
             Username = txt_username.Text;
-            backgroudTask.Username = Username;
+            utility.Username = Username;
 
             //backgroudTask.ConnectToServer();
             btn_connect.Enabled = false;
             this.Hide();
             form_client fc = new form_client();
-            fc.backgroundTask = backgroudTask;
+            fc.utility = utility;
             fc.Show();
         }
     }
