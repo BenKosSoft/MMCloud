@@ -142,8 +142,7 @@ namespace MMClient
                         byte[] postBuf = Encoding.UTF8.GetBytes(string2);
 
                         //Send file s with buffers and default flags to the remote device.
-                        //Mert: utility'leri UTILITY'ye cevirdim... static kuralindan dolayi
-                        Utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(AsyncFileSendCallback), Utility.ClientSocket);
+                        utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(AsyncFileSendCallback), utility.ClientSocket);
                     }
                     else
                     {
