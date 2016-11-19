@@ -16,8 +16,9 @@ namespace MMClient
 {
     public partial class form_login : Form
     {
-        private static Socket ClientSocket = new Socket
-           (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+        //Utiliy'nin icinde socket static oldugu icin ve initilizae edildigi icin burada gerek yok diye dusundum.
+        //private static Socket ClientSocket = new Socket
+        //   (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         private static ushort Port;
         private IPAddress ServerIp;
         private static string Username;
@@ -95,12 +96,20 @@ namespace MMClient
             Username = txt_username.Text;
             utility.Username = Username;
 
-            //backgroudTask.ConnectToServer();
-            btn_connect.Enabled = false;
-            this.Hide();
-            form_client fc = new form_client();
-            fc.utility = utility;
-            fc.Show();
+            utility.ConnectToServer();
+
+            //Mert: burada check ediyor, baglanabilmis mi diye, message box'a ne yazacagimiz degisebilir...
+            if (!Utility.IsSocketConnected(Utility.ClientSocket))
+            {
+                MessageBox.Show("username is already exist in the system!", "Error!");
+            }else
+            {
+                btn_connect.Enabled = false;
+                this.Hide();
+                form_client fc = new form_client();
+                fc.utility = utility;
+                fc.Show();
+            }
         }
     }
 }

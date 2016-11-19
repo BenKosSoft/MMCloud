@@ -12,21 +12,27 @@ namespace MMClient
 {
     public class Utility
     {
-        public Socket ClientSocket { get; set; }
+        public static Socket ClientSocket { get; set; } //Mert: socket'i static yaptim, her yerde ayni olsun diye...
         public ushort Port { get; set; }
         public IPAddress ServerIp { get; set; }
         public string Username { get; set; }
 
         public void ConnectToServer()
         {
-            while (!IsSocketConnected(ClientSocket))
-            {
-                ClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
-                ClientSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
-                ClientSocket.Connect(ServerIp, Port);
-                SendString(Username);
-                Thread.Sleep(1000);
-            }
+            //Mert: while loop'una gerek yok diye dusundum, cunku baglanamiyorsa, surekli baglanmaya calismayacagiz, sadece Message Box verebiliriz
+            // onu login formunda yaptim, connect To Server cagirilinca...
+            ClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            ClientSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
+            ClientSocket.Connect(ServerIp, Port);
+            SendString(Username);
+            Thread.Sleep(1000);
+        }
+
+        //Mert: bunu ekledim, server anlaasin diye client'in ciktigini socket'in kapanmasi gerekiyor.
+        public void DisconnectFromServer()
+        {
+            ClientSocket.Shutdown(SocketShutdown.Both);
+            ClientSocket.Close();
         }
 
         private void SendString(string text)

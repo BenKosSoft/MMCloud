@@ -65,6 +65,11 @@ namespace MMClient
         private void btn_logout_Click(object sender, EventArgs e)
         {
             //TODO:check ongoing upload downloads
+            //Mert: burada socket'in kapanmasi gerekiyor, ama sikinti surada, 
+            //form login'in icinde Socket ile bu socket'in ayni olmasi lazim, ama sanirim degil. O yuzden static yaptim, o socket ki her yerde ayni olsun.
+            //client programi bir tane acik olacagindan, butun clientlarda ayni static variable olmucak o yuzden sorun olmaz gibi geliyor.
+            utility.DisconnectFromServer();
+
             btn_logout.Enabled = false;
             this.Hide();
             form_login fl = new form_login();
@@ -137,7 +142,8 @@ namespace MMClient
                         byte[] postBuf = Encoding.UTF8.GetBytes(string2);
 
                         //Send file s with buffers and default flags to the remote device.
-                        utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(AsyncFileSendCallback), utility.ClientSocket);
+                        //Mert: utility'leri UTILITY'ye cevirdim... static kuralindan dolayi
+                        Utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(AsyncFileSendCallback), Utility.ClientSocket);
                     }
                     else
                     {

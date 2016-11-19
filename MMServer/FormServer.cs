@@ -145,7 +145,7 @@ namespace MMServer
             }
             catch (SocketException)
             {
-                Console.WriteLine("Client forcefully disconnected");
+                writeOnConsole("client is disconnected from Server...");
                 current.Close();
                 return;
             }
@@ -184,7 +184,7 @@ namespace MMServer
                     Directory.CreateDirectory(newPath);
                     writeOnConsole(username + " directory is created...");
                     string newPathPath = Path.Combine(newPath, ".shared.");
-                    File.CreateText(newPathPath);
+                    File.CreateText(newPathPath).Close();
                 }
                 current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
             }
@@ -198,6 +198,8 @@ namespace MMServer
             if (!IsSocketConnected(current))
             {
                 writeOnConsole(username + " is disconnected from Server...");
+                current.Close();
+                clientSockets.Remove(current);
                 return;
             }
 
@@ -208,7 +210,7 @@ namespace MMServer
             }
             catch (SocketException)
             {
-                Console.WriteLine("Client forcefully disconnected");
+                writeOnConsole(username + " is disconnected from Server...");
                 // Don't shutdown because the socket may be disposed and its disconnected anyway.
                 current.Close();
                 clientSockets.Remove(current);
@@ -324,11 +326,7 @@ namespace MMServer
 
         private static bool IsSocketConnected(Socket s)
         {
-            if (!s.Connected)
-            {
-                return false;
-            }
-            return !((s.Poll(1000, SelectMode.SelectRead) && (s.Available == 0)) || !s.Connected);
+            return !(!s.Connected || (s.Poll(1000, SelectMode.SelectRead) && (s.Available == 0)));
         }
     }
 }
