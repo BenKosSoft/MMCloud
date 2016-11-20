@@ -417,7 +417,7 @@ namespace MMServer
                 if (File.Exists(diskPath))
                 {
                     StringBuilder sb = new StringBuilder().Append(fileName).Append(':')
-                        .Append(sizeInKb).Append(':').Append(date).Append(':').Append(owner).Append(':');
+                        .Append(sizeInKb).Append(" KB").Append(':').Append(date).Append(':').Append(owner).Append(':');
                     StreamWriter writer = File.AppendText(diskPath);
                     writer.WriteLine(sb.ToString());
                     writer.WriteLine();
