@@ -63,6 +63,12 @@ namespace MMServer
             if (fbd.ShowDialog() == DialogResult.OK)
                 cloudPath.Text = fbd.SelectedPath;
 
+            writeOnConsole("Cloud path is selected");
+        }
+
+        private void startServer_Click(object sender, EventArgs e)
+        {
+            //create .path
             StringBuilder sb = new StringBuilder();
             string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             path = sb.Append(path).Append(@"\MMCloud\.path").ToString();
@@ -71,11 +77,6 @@ namespace MMServer
             sw.Flush();
             sw.Close();
 
-            writeOnConsole("Cloud path is selected");
-        }
-
-        private void startServer_Click(object sender, EventArgs e)
-        {
             ushort port;
             if(!UInt16.TryParse(portText.Text, out port))
             {
@@ -224,67 +225,70 @@ namespace MMServer
                 return;
             }
 
-            byte[] recBuf = new byte[received];
-            Array.Copy(buffer, recBuf, received);
-            string text = Encoding.ASCII.GetString(recBuf);
-
-            if (text.Substring(0,5).Equals("Start")) //file transfer is started...
+            if(received > 0)
             {
-                //create filename on .path file
-                int index = text.IndexOf(':');
-                StreamWriter sw = File.CreateText(Path.Combine(cloudPath.Text, username, ".path"));
-                sw.WriteLine(text.Substring(1, text.Length - 2));
-                sw.Flush();
-                sw.Close();
+                byte[] recBuf = new byte[received];
+                Array.Copy(buffer, recBuf, received);
+                string text = Encoding.ASCII.GetString(recBuf);
 
-                writeOnConsole("File is coming...");
-                string msg = "File is uploading... Please wait...";
-                byte[] data = Encoding.ASCII.GetBytes(msg);
-                try { current.Send(data); }
-                catch(Exception e)
+                if (text.Substring(0, 5).Equals("Start")) //file transfer is started...
                 {
-                    writeOnConsole(e.Message);
-                    writeOnConsole(username + " is disconnected from Server...");
-                    current.Close();
-                    clientSockets.Remove(current);
-                    return;
-                }
-                
-            }
-            else if (text.Substring(0, 3).Equals("End")) //file transfer is ended...
-            {
-                writeOnConsole("File upload is done...");
-                string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-                SaveOnDisk(filePath, username);
-                string msg = "File upload is done...";
-                byte[] data = Encoding.ASCII.GetBytes(msg);
-                try { current.Send(data); }
-                catch (Exception e)
-                {
-                    writeOnConsole(e.Message);
-                    writeOnConsole(username + " is disconnected from Server...");
-                    current.Close();
-                    clientSockets.Remove(current);
-                    return;
-                }
-            }
-            else if (text.Equals("Refresh"))
-            {
-                //request refresh of list of files
-                SendFileList(current, username);
-            }
-            else if (text.Substring(0, 6).Equals("Delete"))
-            {
-                string toBeDeleted = text.Split(':')[1];
-                File.Delete(toBeDeleted);
-                DeleteFromDisk(toBeDeleted, username);
-            }
-            else
-            {
-                string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-                AppendAllBytes(filePath, buffer);
-            }
+                    //create filename on .path file
+                    int index = text.IndexOf(':');
+                    StreamWriter sw = File.CreateText(Path.Combine(cloudPath.Text, username, ".path"));
+                    sw.WriteLine(text.Substring(1, text.Length - 2));
+                    sw.Flush();
+                    sw.Close();
 
+                    writeOnConsole("File is coming...");
+                    string msg = "File is uploading... Please wait...";
+                    byte[] data = Encoding.ASCII.GetBytes(msg);
+                    try { current.Send(data); }
+                    catch (Exception e)
+                    {
+                        writeOnConsole(e.Message);
+                        writeOnConsole(username + " is disconnected from Server...");
+                        current.Close();
+                        clientSockets.Remove(current);
+                        return;
+                    }
+
+                }
+                else if (text.Substring(0, 3).Equals("End")) //file transfer is ended...
+                {
+                    writeOnConsole("File upload is done...");
+                    string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
+                    SaveOnDisk(filePath, username);
+                    string msg = "File upload is done...";
+                    byte[] data = Encoding.ASCII.GetBytes(msg);
+                    try { current.Send(data); }
+                    catch (Exception e)
+                    {
+                        writeOnConsole(e.Message);
+                        writeOnConsole(username + " is disconnected from Server...");
+                        current.Close();
+                        clientSockets.Remove(current);
+                        return;
+                    }
+                }
+                else if (text.Equals("Refresh"))
+                {
+                    //request refresh of list of files
+                    SendFileList(current, username);
+                }
+                else if (text.Substring(0, 6).Equals("Delete"))
+                {
+                    string toBeDeleted = text.Split(':')[1];
+                    File.Delete(toBeDeleted);
+                    DeleteFromDisk(toBeDeleted, username);
+                }
+                else
+                {
+                    string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
+                    AppendAllBytes(filePath, buffer);
+                }
+            }
+            
             try
             {
                 current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
@@ -409,9 +413,10 @@ namespace MMServer
                 string date = fileInfo.LastWriteTime.ToShortDateString();
                 string owner = username;
                 string diskPath = Path.Combine(cloudPath.Text, username, ".shared.");
+                string fileName = fileInfo.Name;
                 if (File.Exists(diskPath))
                 {
-                    StringBuilder sb = new StringBuilder().Append(filePath).Append(':')
+                    StringBuilder sb = new StringBuilder().Append(fileName).Append(':')
                         .Append(sizeInKb).Append(':').Append(date).Append(':').Append(owner).Append(':');
                     StreamWriter writer = File.AppendText(diskPath);
                     writer.WriteLine(sb.ToString());
