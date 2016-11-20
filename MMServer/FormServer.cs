@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -24,6 +25,8 @@ namespace MMServer
 
         private const int BUFFER_SIZE = 2048;
         private static readonly byte[] buffer = new byte[BUFFER_SIZE];
+
+        private readonly object syncLock = new object();
 
         public Form_Server()
         {
@@ -184,6 +187,7 @@ namespace MMServer
                 }
                 catch (Exception e)
                 {
+                    writeOnConsole(e.Message);
                     writeOnConsole(username + " is disconnected from Server...");
                     current.Close();
                     clientSockets.Remove(current);
@@ -210,8 +214,9 @@ namespace MMServer
             {
                 received = current.EndReceive(AR);
             }
-            catch (SocketException)
+            catch (Exception e)
             {
+                writeOnConsole(e.Message);
                 writeOnConsole(username + " is disconnected from Server...");
                 // Don't shutdown because the socket may be disposed and its disconnected anyway.
                 current.Close();
@@ -238,6 +243,7 @@ namespace MMServer
                 try { current.Send(data); }
                 catch(Exception e)
                 {
+                    writeOnConsole(e.Message);
                     writeOnConsole(username + " is disconnected from Server...");
                     current.Close();
                     clientSockets.Remove(current);
@@ -248,11 +254,14 @@ namespace MMServer
             else if (text.Substring(0, 3).Equals("End")) //file transfer is ended...
             {
                 writeOnConsole("File upload is done...");
+                string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
+                SaveOnDisk(filePath, username);
                 string msg = "File upload is done...";
                 byte[] data = Encoding.ASCII.GetBytes(msg);
                 try { current.Send(data); }
                 catch (Exception e)
                 {
+                    writeOnConsole(e.Message);
                     writeOnConsole(username + " is disconnected from Server...");
                     current.Close();
                     clientSockets.Remove(current);
@@ -263,6 +272,12 @@ namespace MMServer
             {
                 //request refresh of list of files
                 SendFileList(current, username);
+            }
+            else if (text.Substring(0, 6).Equals("Delete"))
+            {
+                string toBeDeleted = text.Split(':')[1];
+                File.Delete(toBeDeleted);
+                DeleteFromDisk(toBeDeleted, username);
             }
             else
             {
@@ -275,6 +290,7 @@ namespace MMServer
                 current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
             }catch(Exception e)
             {
+                writeOnConsole(e.Message);
                 writeOnConsole(username + " is disconnected from Server...");
                 current.Close();
                 clientSockets.Remove(current);
@@ -382,6 +398,78 @@ namespace MMServer
                 }
             }*/
             writeOnConsole(username + "'s files are sent to client...");
+        }
+
+        private void SaveOnDisk(string filePath, string username)
+        {
+            if (File.Exists(filePath))
+            {
+                FileInfo fileInfo = new FileInfo(filePath);
+                long sizeInKb = fileInfo.Length / 1024;
+                string date = fileInfo.LastWriteTime.ToShortDateString();
+                string owner = username;
+                string diskPath = Path.Combine(cloudPath.Text, username, ".shared.");
+                if (File.Exists(diskPath))
+                {
+                    StringBuilder sb = new StringBuilder().Append(filePath).Append(':')
+                        .Append(sizeInKb).Append(':').Append(date).Append(':').Append(owner).Append(':');
+                    StreamWriter writer = File.AppendText(diskPath);
+                    writer.WriteLine(sb.ToString());
+                    writer.WriteLine();
+                    writer.Flush();
+                    writer.Close();
+                }else
+                {
+                    writeOnConsole("Something wrong with .shared file...");
+                }
+            }
+            else
+            {
+                writeOnConsole("Something wrong with uploaded file...");
+            }
+        }
+
+        //Delete one line function is creating new txt, then write lines, on that txt, which will not be deleted, 
+        //complexity is high. Think about it
+        //[MethodImpl(MethodImplOptions.Synchronized)] 
+        private void DeleteFromDisk(string toBeDeleted, string username)
+        {
+            lock (syncLock) //mutex
+            {
+                string usernamePath = Path.Combine(cloudPath.Text, username);
+                string diskPath = Path.Combine(usernamePath, ".shared.");
+                string tempPath = Path.Combine(usernamePath, "temp.txt");
+                string[] allPaths = File.ReadAllLines(diskPath);
+                StreamWriter writer = File.AppendText(tempPath);
+                string[] users = { };
+
+                foreach (string s in allPaths)
+                {
+                    if (!s.Equals(""))
+                    {
+                        string filePath = s.Split(':')[0];
+                        if (!filePath.Trim().Equals(toBeDeleted))
+                        {
+                            writer.WriteLine(s);
+                            writer.WriteLine();
+                            writer.Flush();
+                        }else
+                        {
+                            users = s.Split(':')[4].Split('|');
+                        }
+                    }
+                }
+                writer.Close();
+
+                //this is wrong, it cannot be recursive...
+                foreach(string user in users)
+                {
+                    DeleteFromDisk(toBeDeleted, user);
+                }
+
+                File.Delete(diskPath);
+                File.Move(tempPath, diskPath);
+            }
         }
     }
 }
