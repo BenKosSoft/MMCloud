@@ -12,6 +12,16 @@ namespace MMClient
 {
     public class Utility
     {
+        public static readonly string BEGIN_UPLOAD = "_MMCloud_begin$upload";
+        public static readonly string END_UPLOAD = "_MMCloud_end$upload";
+        public static readonly string BEGIN_DOWNLOAD = "_MMCloud_begin$download";
+        public static readonly string END_DOWNLOAD = "_MMCloud_end$download";
+        public static readonly string REQUEST_FILE_LIST = "_MMCloud_request$file$list";
+        public static readonly string REQUEST_FILE = "_MMCloud_request$file";
+        public static readonly string RENAME_FILE = "_MMCloud_rename$file";
+        public static readonly string DELETE_FILE = "_MMCloud_delete$file";
+        public static readonly string SHARE_FILE = "_MMCloud_share$file";
+
         public Socket ClientSocket { get; set; } 
         public ushort Port { get; set; }
         public IPAddress ServerIp { get; set; }
@@ -33,7 +43,7 @@ namespace MMClient
             ClientSocket.Close();
         }
 
-        private void SendString(string text)
+        public void SendString(string text)
         {
             byte[] buffer = Encoding.ASCII.GetBytes(text);
             ClientSocket.Send(buffer, 0, buffer.Length, SocketFlags.None);
@@ -55,7 +65,7 @@ namespace MMClient
 
         public static bool IsSocketConnected(Socket s)
         {
-            return !((s.Poll(1000, SelectMode.SelectRead) && (s.Available == 0)) || !s.Connected);
+            return !(!s.Connected || (s.Poll(1000, SelectMode.SelectRead) && (s.Available == 0)));
         }
     }
 }

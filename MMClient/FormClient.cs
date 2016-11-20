@@ -8,6 +8,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Text.RegularExpressions;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 
@@ -17,7 +18,7 @@ namespace MMClient
     {
         public Utility utility { get; set; }
 
-        private string[] filesToUpload;
+        private List<string> filesToUpload;
 
         public form_client()
         {
@@ -65,9 +66,6 @@ namespace MMClient
         private void btn_logout_Click(object sender, EventArgs e)
         {
             //TODO:check ongoing upload downloads
-            //Mert: burada socket'in kapanmasi gerekiyor, ama sikinti surada, 
-            //form login'in icinde Socket ile bu socket'in ayni olmasi lazim, ama sanirim degil. O yuzden static yaptim, o socket ki her yerde ayni olsun.
-            //client programi bir tane acik olacagindan, butun clientlarda ayni static variable olmucak o yuzden sorun olmaz gibi geliyor.
             utility.DisconnectFromServer();
 
             btn_logout.Enabled = false;
@@ -81,6 +79,7 @@ namespace MMClient
         {
             //TODO: call request file list function here
             writeOnConsole("User requested refreshing file list");
+            utility.SendString(Utility.REQUEST_FILE_LIST);
         }
 
         private void btn_browse_Click(object sender, EventArgs e)
@@ -114,10 +113,10 @@ namespace MMClient
             btn_upload.Enabled = false;
             lbl_uploadStatus.Text = "Upload starting...";
             writeOnConsole("User started upload request");
-            filesToUpload = Regex.Split(txt_filepath.Text, "\" \"");
+            filesToUpload = Regex.Split(txt_filepath.Text, "\" \"").OfType<string>().ToList();
 
             filesToUpload[0] = filesToUpload[0].Substring(1);
-            filesToUpload[filesToUpload.Length - 1] = filesToUpload[filesToUpload.Length - 1].Substring(0, filesToUpload[filesToUpload.Length - 1].Length - 2);
+            filesToUpload[filesToUpload.Count - 1] = filesToUpload[filesToUpload.Count - 1].Substring(0, filesToUpload[filesToUpload.Count - 1].Length - 2);
             
             foreach (string s in filesToUpload)
             {
@@ -134,15 +133,15 @@ namespace MMClient
                         // Send a file fileName to the remote device with preBuffer and postBuffer data.
 
                         // Create the preBuffer data.
-                        string string1 = String.Format("Start file transfer: {0}{1}", s, Environment.NewLine);
+                        string string1 = String.Format(Utility.BEGIN_UPLOAD + " file:{0}{1}", s, Environment.NewLine);
                         byte[] preBuf = Encoding.UTF8.GetBytes(string1);
 
                         // Create the postBuffer data.
-                        string string2 = String.Format("End file transfer: {0}{1}", s, Environment.NewLine);
+                        string string2 = String.Format(Utility.END_UPLOAD + " file: {0}{1}", s, Environment.NewLine);
                         byte[] postBuf = Encoding.UTF8.GetBytes(string2);
 
                         //Send file s with buffers and default flags to the remote device.
-                        utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(AsyncFileSendCallback), utility.ClientSocket);
+                        //utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(AsyncFileSendCallback), utility.ClientSocket);
                     }
                     else
                     {
@@ -171,8 +170,10 @@ namespace MMClient
                             continue;
                         }
                     }
+                    Thread.Sleep(1000);
                 } while (retry);
             }
+            filesToUpload.Clear();
             lbl_uploadStatus.Text = "Upload done";
             writeOnConsole("Upload is finished");
             btn_upload.Enabled = true;
