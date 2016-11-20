@@ -16,12 +16,11 @@ namespace MMClient
 {
     public partial class form_login : Form
     {
-        private static Socket ClientSocket = new Socket
-           (AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
         private static ushort Port;
         private IPAddress ServerIp;
         private static string Username;
         public Utility utility { get; set; }
+
 
         public form_login()
         {
@@ -33,7 +32,6 @@ namespace MMClient
             StartPosition = FormStartPosition.CenterScreen;
 
             utility = new Utility();
-            utility.ClientSocket = ClientSocket;
 
             InitializeComponent();
         }
@@ -97,7 +95,14 @@ namespace MMClient
             utility.Username = Username;
 
             //TODO: surround with try catch to detect server crash
-            //utility.ConnectToServer();
+            //try
+            //{
+            //    utility.ConnectToServer();
+            //}
+            //catch (SocketException)
+            //{
+            //    MessageBox.Show("Server connection cannot be established!", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //}
             
             
             //if (!Utility.IsSocketConnected(Utility.ClientSocket))

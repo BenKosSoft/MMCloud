@@ -34,7 +34,6 @@
             this.label1 = new System.Windows.Forms.Label();
             this.txt_filepath = new System.Windows.Forms.TextBox();
             this.btn_browse = new System.Windows.Forms.Button();
-            this.lb_fileList = new System.Windows.Forms.ListBox();
             this.lbl_fileList = new System.Windows.Forms.Label();
             this.label2 = new System.Windows.Forms.Label();
             this.btn_upload = new System.Windows.Forms.Button();
@@ -43,6 +42,7 @@
             this.lbl_uploadStatus = new System.Windows.Forms.Label();
             this.tt_fileListTip = new System.Windows.Forms.ToolTip(this.components);
             this.lbl_refresh = new System.Windows.Forms.LinkLabel();
+            this.lv_fileList = new System.Windows.Forms.ListView();
             this.SuspendLayout();
             // 
             // btn_logout
@@ -89,14 +89,6 @@
             this.btn_browse.Text = "Browse";
             this.btn_browse.UseVisualStyleBackColor = true;
             this.btn_browse.Click += new System.EventHandler(this.btn_browse_Click);
-            // 
-            // lb_fileList
-            // 
-            this.lb_fileList.FormattingEnabled = true;
-            this.lb_fileList.Location = new System.Drawing.Point(12, 67);
-            this.lb_fileList.Name = "lb_fileList";
-            this.lb_fileList.Size = new System.Drawing.Size(260, 160);
-            this.lb_fileList.TabIndex = 5;
             // 
             // lbl_fileList
             // 
@@ -163,11 +155,20 @@
             this.lbl_refresh.Text = "Refresh";
             this.lbl_refresh.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lbl_refresh_LinkClicked);
             // 
+            // lw_fileList
+            // 
+            this.lv_fileList.Location = new System.Drawing.Point(12, 68);
+            this.lv_fileList.Name = "lw_fileList";
+            this.lv_fileList.Size = new System.Drawing.Size(264, 159);
+            this.lv_fileList.TabIndex = 13;
+            this.lv_fileList.UseCompatibleStateImageBehavior = false;
+            // 
             // form_client
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(284, 526);
+            this.Controls.Add(this.lv_fileList);
             this.Controls.Add(this.lbl_refresh);
             this.Controls.Add(this.lbl_uploadStatus);
             this.Controls.Add(this.lbl_activity);
@@ -175,7 +176,6 @@
             this.Controls.Add(this.btn_upload);
             this.Controls.Add(this.label2);
             this.Controls.Add(this.lbl_fileList);
-            this.Controls.Add(this.lb_fileList);
             this.Controls.Add(this.btn_browse);
             this.Controls.Add(this.txt_filepath);
             this.Controls.Add(this.label1);
@@ -196,7 +196,6 @@
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox txt_filepath;
         private System.Windows.Forms.Button btn_browse;
-        private System.Windows.Forms.ListBox lb_fileList;
         private System.Windows.Forms.Label lbl_fileList;
         private System.Windows.Forms.Label label2;
         private System.Windows.Forms.Button btn_upload;
@@ -205,6 +204,7 @@
         private System.Windows.Forms.Label lbl_uploadStatus;
         private System.Windows.Forms.ToolTip tt_fileListTip;
         private System.Windows.Forms.LinkLabel lbl_refresh;
+        private System.Windows.Forms.ListView lv_fileList;
     }
 }
 

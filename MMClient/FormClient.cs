@@ -18,7 +18,18 @@ namespace MMClient
     {
         public Utility utility { get; set; }
 
+        //File list to upload server
         private List<string> filesToUpload;
+
+        // ManualResetEvent instances signal completion.
+        private static ManualResetEvent sendDone =
+            new ManualResetEvent(false);
+        private static ManualResetEvent receiveDone =
+            new ManualResetEvent(false);
+
+        //for server response
+        private StringBuilder Response;
+        private byte[] responseBuffer = new byte[1024];
 
         public form_client()
         {
@@ -40,7 +51,22 @@ namespace MMClient
             lbl_user.Text = new StringBuilder().Append("Welcome ").Append(utility.Username).ToString();
             lbl_uploadStatus.Text = "No file chosen...";
 
-            //TODO: CALL request file list here
+            //Configure list view
+            lv_fileList.View = View.Details;
+            lv_fileList.LabelEdit = false;
+            lv_fileList.AllowColumnReorder = false;
+            lv_fileList.FullRowSelect = true;
+            lv_fileList.GridLines = false;
+            lv_fileList.Sorting = SortOrder.Ascending;
+
+            //Prepare Headers for file list
+            lv_fileList.Columns.Add("File Name", -2, HorizontalAlignment.Left);
+            lv_fileList.Columns.Add("Date Modified", -2, HorizontalAlignment.Left);
+            lv_fileList.Columns.Add("Size", -2, HorizontalAlignment.Left);
+            lv_fileList.Columns.Add("Owner", -2, HorizontalAlignment.Left);
+
+            //CALL request file list here
+            lbl_refresh_LinkClicked(sender, (LinkLabelLinkClickedEventArgs)e);
 
             //Update activity
             writeOnConsole("Server connection successful ip:port = " + utility.ServerIp + ":" + utility.Port);
@@ -54,7 +80,7 @@ namespace MMClient
             tt_fileListTip.ShowAlways = true;
 
             // Set up the ToolTip text for the File list
-            tt_fileListTip.SetToolTip(this.lb_fileList, "Click to see more options...");
+            tt_fileListTip.SetToolTip(this.lv_fileList, "Click to see more options...");
         }
 
         private void form_client_FormClosing(object sender, FormClosingEventArgs e)
@@ -77,9 +103,34 @@ namespace MMClient
 
         private void lbl_refresh_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
-            //TODO: call request file list function here
             writeOnConsole("User requested refreshing file list");
-            utility.SendString(Utility.REQUEST_FILE_LIST);
+            label2.Text = "Refreshing file list....";
+            try
+            {
+                utility.SendString(Utility.REQUEST_FILE_LIST);
+            }
+            catch (SocketException)
+            {
+                MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                btn_logout_Click(sender, e);
+            }
+
+            ReceiveResponse();
+            receiveDone.WaitOne();
+
+            // File list has arrived; process it.
+            if (Response.Length > 1)
+            {
+                string[] files = Regex.Split(Response.ToString(), "\n");
+                foreach (string s in files)
+                {
+                    string[] data = Regex.Split(s, ":");
+                    ListViewItem item = new ListViewItem(data);
+                    lv_fileList.Items.Add(item);
+                }
+            }
+            writeOnConsole("Done refreshing file list.");
+            label2.Text = "Click an item for more options";
         }
 
         private void btn_browse_Click(object sender, EventArgs e)
@@ -110,6 +161,7 @@ namespace MMClient
 
         private void btn_upload_Click(object sender, EventArgs e)
         {
+            //HACK: This won't work while sending multiple files, make it background worker.
             btn_upload.Enabled = false;
             lbl_uploadStatus.Text = "Upload starting...";
             writeOnConsole("User started upload request");
@@ -120,17 +172,17 @@ namespace MMClient
             
             foreach (string s in filesToUpload)
             {
-                bool retry = false;
+                bool retry;
 
                 do
                 {
+                    retry = false;
                     if (File.Exists(s))
                     {
-                        //TODO: IMPLEMENT HERE
                         lbl_uploadStatus.Text = "Uploading " + s + "...";
                         writeOnConsole("Uploading " + s);
 
-                        // Send a file fileName to the remote device with preBuffer and postBuffer data.
+                        // Send a file to the remote device with preBuffer and postBuffer data.
 
                         // Create the preBuffer data.
                         string string1 = String.Format(Utility.BEGIN_UPLOAD + " file:{0}{1}", s, Environment.NewLine);
@@ -141,11 +193,11 @@ namespace MMClient
                         byte[] postBuf = Encoding.UTF8.GetBytes(string2);
 
                         //Send file s with buffers and default flags to the remote device.
-                        //utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(AsyncFileSendCallback), utility.ClientSocket);
+                        //utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
+                        //sendDone.WaitOne();
                     }
                     else
                     {
-                        retry = false;
                         writeOnConsole("Requested file could not be found: " + s);
                         //Configure warning message.
                         string body = new StringBuilder().Append("Specfied file ").Append(s).Append(" cannot be found!").ToString();
@@ -170,7 +222,6 @@ namespace MMClient
                             continue;
                         }
                     }
-                    Thread.Sleep(1000);
                 } while (retry);
             }
             filesToUpload.Clear();
@@ -179,7 +230,7 @@ namespace MMClient
             btn_upload.Enabled = true;
         }
 
-        private void AsyncFileSendCallback(IAsyncResult ar)
+        private void FileSendCallback(IAsyncResult ar)
         {
             //TODO: writeOnConsole("File uploaded:" + );
             // Retrieve the socket from the state object.
@@ -187,7 +238,39 @@ namespace MMClient
 
             // Complete sending the data to the remote device.
             client.EndSendFile(ar);
-            //TODO: sendDone.Set();
+            sendDone.Set();
+        }
+
+        public void ReceiveResponse()
+        {
+            // Begin receiving the data from the remote device.
+            utility.ClientSocket.BeginReceive(responseBuffer, 0, responseBuffer.Length, SocketFlags.None,
+                    new AsyncCallback(ReceiveCallback), utility.ClientSocket);
+        }
+
+        private void ReceiveCallback(IAsyncResult ar)
+        {
+            // Retrieve the client socket from the asynchronous state object.
+            Socket client = (Socket)ar.AsyncState;
+
+            // Read data from the remote device.
+            int bytesRead = client.EndReceive(ar);
+
+            if (bytesRead > 0)
+            {
+                // There might be more data, so store the data received so far.
+                Response.Append(Encoding.ASCII.GetString(responseBuffer, 0, bytesRead));
+
+                // Get the rest of the data.
+                client.BeginReceive(responseBuffer, 0, responseBuffer.Length, SocketFlags.None,
+                    new AsyncCallback(ReceiveCallback), client);
+            }
+            else
+            {
+                //TODO: End of file recieve, any processing??
+                // Signal that all bytes have been received.
+                receiveDone.Set();
+            }
         }
 
         private void writeOnConsole(string text)

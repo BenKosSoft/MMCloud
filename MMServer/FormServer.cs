@@ -405,14 +405,15 @@ namespace MMServer
             if (File.Exists(filePath))
             {
                 FileInfo fileInfo = new FileInfo(filePath);
+                string filename = fileInfo.Name;
                 long sizeInKb = fileInfo.Length / 1024;
                 string date = fileInfo.LastWriteTime.ToShortDateString();
                 string owner = username;
                 string diskPath = Path.Combine(cloudPath.Text, username, ".shared.");
                 if (File.Exists(diskPath))
                 {
-                    StringBuilder sb = new StringBuilder().Append(filePath).Append(':')
-                        .Append(sizeInKb).Append(':').Append(date).Append(':').Append(owner).Append(':');
+                    StringBuilder sb = new StringBuilder().Append(filename).Append(':')
+                        .Append(sizeInKb).Append(" KB").Append(':').Append(date).Append(':').Append(owner).Append(':');
                     StreamWriter writer = File.AppendText(diskPath);
                     writer.WriteLine(sb.ToString());
                     writer.WriteLine();
