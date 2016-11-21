@@ -1,4 +1,5 @@
-﻿using System;
+﻿using MMClient;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
@@ -42,7 +43,7 @@ namespace MMServer
 
         private void Form_Server_Load(object sender, EventArgs e)
         {
-            ipLabel.Text = getMyIP().ToString();
+            ipLabel.Text = Utility.getMyIp().ToString();
             logText.Text = ">> Hello Server";
 
             StringBuilder sb = new StringBuilder();
@@ -95,7 +96,7 @@ namespace MMServer
             serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
             writeOnConsole("Setting up server...");
-            serverSocket.Bind(new IPEndPoint(getMyIP(), port));
+            serverSocket.Bind(new IPEndPoint(Utility.getMyIp(), port));
             if (serverSocket.IsBound)
             {
                 serverSocket.Listen(100);
@@ -202,7 +203,7 @@ namespace MMServer
             Socket current = (Socket)AR.AsyncState;
             string username;
             clientSockets.TryGetValue(current, out username);
-            if (!IsSocketConnected(current))
+            if (!Utility.IsSocketConnected(current))
             {
                 writeOnConsole(username + " is disconnected from Server...");
                 current.Close();
@@ -231,12 +232,12 @@ namespace MMServer
                 Array.Copy(buffer, recBuf, received);
                 string text = Encoding.ASCII.GetString(recBuf);
 
-                if (text.Substring(0, 5).Equals("Start")) //file transfer is started...
+                if (text.IndexOf(Utility.BEGIN_UPLOAD) > -1)  //file transfer is started...
                 {
                     //create filename on .path file
-                    int index = text.IndexOf(':');
+                    string filename = text.Split(':')[1];
                     StreamWriter sw = File.CreateText(Path.Combine(cloudPath.Text, username, ".path"));
-                    sw.WriteLine(text.Substring(1, text.Length - 2));
+                    sw.WriteLine(filename);
                     sw.Flush();
                     sw.Close();
 
@@ -252,9 +253,71 @@ namespace MMServer
                         clientSockets.Remove(current);
                         return;
                     }
-
+                    current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
                 }
-                else if (text.Substring(0, 3).Equals("End")) //file transfer is ended...
+                else if (text.IndexOf(Utility.REQUEST_FILE_LIST) > -1)
+                {
+                    //request refresh of list of files
+                    SendFileList(current, username);
+                }
+                else if (text.IndexOf(Utility.DELETE_FILE) > -1)
+                    //TODO: Delete From Disk function will be covered again...
+                {
+                    string toBeDeleted = text.Split(':')[1];
+                    File.Delete(toBeDeleted);
+                    DeleteFromDisk(toBeDeleted, username);
+                }
+                //TODO: new else ifs will come in the next steps.
+            }
+            
+            try
+            {
+                current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+            }catch(Exception e)
+            {
+                writeOnConsole(e.Message);
+                writeOnConsole(username + " is disconnected from Server...");
+                current.Close();
+                clientSockets.Remove(current);
+                return;
+            }
+        }
+
+        private void FileCallBack(IAsyncResult AR)
+        {
+            Socket current = (Socket)AR.AsyncState;
+            string username;
+            clientSockets.TryGetValue(current, out username);
+            if (!Utility.IsSocketConnected(current))
+            {
+                writeOnConsole(username + " is disconnected from Server...");
+                current.Close();
+                clientSockets.Remove(current);
+                return;
+            }
+
+            int received;
+            try
+            {
+                received = current.EndReceive(AR);
+            }
+            catch (Exception e)
+            {
+                writeOnConsole(e.Message);
+                writeOnConsole(username + " is disconnected from Server...");
+                // Don't shutdown because the socket may be disposed and its disconnected anyway.
+                current.Close();
+                clientSockets.Remove(current);
+                return;
+            }
+
+            if(received > 0)
+            {
+                byte[] recBuf = new byte[received];
+                Array.Copy(buffer, recBuf, received);
+                string text = Encoding.ASCII.GetString(recBuf);
+
+                if (text.IndexOf(Utility.END_UPLOAD) > -1) //finish transfer
                 {
                     writeOnConsole("File upload is done...");
                     string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
@@ -271,34 +334,12 @@ namespace MMServer
                         return;
                     }
                 }
-                else if (text.Equals("Refresh"))
-                {
-                    //request refresh of list of files
-                    SendFileList(current, username);
-                }
-                else if (text.Substring(0, 6).Equals("Delete"))
-                {
-                    string toBeDeleted = text.Split(':')[1];
-                    File.Delete(toBeDeleted);
-                    DeleteFromDisk(toBeDeleted, username);
-                }
-                else
+                else //get data
                 {
                     string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
                     AppendAllBytes(filePath, buffer);
+                    current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
                 }
-            }
-            
-            try
-            {
-                current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
-            }catch(Exception e)
-            {
-                writeOnConsole(e.Message);
-                writeOnConsole(username + " is disconnected from Server...");
-                current.Close();
-                clientSockets.Remove(current);
-                return;
             }
         }
 
@@ -360,25 +401,6 @@ namespace MMServer
                     stream.Seek(stream.Length, SeekOrigin.Begin);
                 stream.Write(bytes, 0, bytes.Length);
             }
-        }
-
-        private static IPAddress getMyIP()
-        {
-            IPHostEntry host = Dns.GetHostEntry(Dns.GetHostName());
-
-            foreach (IPAddress ip in host.AddressList)
-            {
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    return ip;
-                }
-            }
-            return IPAddress.Loopback;
-        }
-
-        private static bool IsSocketConnected(Socket s)
-        {
-            return !(!s.Connected || (s.Poll(1000, SelectMode.SelectRead) && (s.Available == 0)));
         }
 
         private void SendFileList(Socket current, string username)
