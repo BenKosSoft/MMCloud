@@ -316,13 +316,14 @@ namespace MMServer
             writeOnConsole(string.Format("received size: {0}", received));
             if(received > 0)
             {
-                byte[] recBuf = new byte[received];
-                Array.Copy(buffer, recBuf, received);
-                string text = Encoding.ASCII.GetString(recBuf);
+               byte[] recBuf = new byte[received];
+               Array.Copy(buffer, recBuf, received);
+               string text = Encoding.ASCII.GetString(recBuf);
 
                //get data
                string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-               AppendAllBytes(filePath, username, buffer);
+               filePath = Path.Combine(cloudPath.Text, username, filePath);
+               AppendAllBytes(filePath, buffer);
                current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
             }
             else
@@ -392,9 +393,8 @@ namespace MMServer
             });
         }
 
-        public void AppendAllBytes(string path, string username, byte[] bytes)
+        public void AppendAllBytes(string path, byte[] bytes)
         {
-            path = Path.Combine(cloudPath.Text, username, path);
             bool isFileExists = File.Exists(path);
 
             using (
