@@ -262,7 +262,7 @@ namespace MMClient
             Socket client = (Socket)ar.AsyncState;
 
             // Complete sending the data to the remote device.
-            writeOnConsole("filesendcallback eneterd");
+            //writeOnConsole("filesendcallback eneterd");
             client.EndSendFile(ar);
             sendDone.Set();
         }

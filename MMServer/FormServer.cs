@@ -344,6 +344,23 @@ namespace MMServer
                     current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
                 }
             }
+            else
+            {
+                writeOnConsole("File upload is done...");
+                string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
+                SaveOnDisk(filePath, username);
+                string msg = "File upload is done...";
+                byte[] data = Encoding.ASCII.GetBytes(msg);
+                try { current.Send(data); }
+                catch (Exception e)
+                {
+                    writeOnConsole(e.Message);
+                    writeOnConsole(username + " is disconnected from Server...");
+                    current.Close();
+                    clientSockets.Remove(current);
+                    return;
+                }
+            }
         }
 
         /// <summary>
