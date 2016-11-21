@@ -66,7 +66,7 @@ namespace MMClient
             lv_fileList.Columns.Add("Owner", -2, HorizontalAlignment.Left);
 
             //CALL request file list here
-            lbl_refresh_LinkClicked(sender, (LinkLabelLinkClickedEventArgs)e);
+            //lbl_refresh_LinkClicked(sender, (LinkLabelLinkClickedEventArgs)e);
 
             //Update activity
             writeOnConsole("Server connection successful ip:port = " + utility.ServerIp + ":" + utility.Port);
@@ -193,8 +193,16 @@ namespace MMClient
                         byte[] postBuf = Encoding.UTF8.GetBytes(string2);
 
                         //Send file s with buffers and default flags to the remote device.
+                        //try
+                        //{
                         //utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
-                        //sendDone.WaitOne();
+                        //    sendDone.WaitOne();
+                        //}
+                        //catch (SocketException)
+                        //{
+                        //    MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        //    btn_logout_Click(sender, e);
+                        //}
                     }
                     else
                     {
@@ -227,6 +235,7 @@ namespace MMClient
             filesToUpload.Clear();
             lbl_uploadStatus.Text = "Upload done";
             writeOnConsole("Upload is finished");
+            txt_filepath.Clear();
             btn_upload.Enabled = true;
         }
 
@@ -250,6 +259,7 @@ namespace MMClient
 
         private void ReceiveCallback(IAsyncResult ar)
         {
+            //TODO: If checks to distinguish between response types
             // Retrieve the client socket from the asynchronous state object.
             Socket client = (Socket)ar.AsyncState;
 

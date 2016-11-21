@@ -93,8 +93,7 @@ namespace MMClient
             }
             Username = txt_username.Text;
             utility.Username = Username;
-
-            //TODO: surround with try catch to detect server crash
+            
             //try
             //{
             //    utility.ConnectToServer();

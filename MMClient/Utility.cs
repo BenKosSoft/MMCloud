@@ -14,8 +14,10 @@ namespace MMClient
     {
         public static readonly string BEGIN_UPLOAD = "_MMCloud_begin$upload";
         public static readonly string END_UPLOAD = "_MMCloud_end$upload";
+        public static readonly string UPLOAD_CANCELED = "_MMCloud_upload$canceled";
         public static readonly string BEGIN_DOWNLOAD = "_MMCloud_begin$download";
         public static readonly string END_DOWNLOAD = "_MMCloud_end$download";
+        public static readonly string DOWNLOAD_CANCELED = "_MMCloud_download$canceled";
         public static readonly string REQUEST_FILE_LIST = "_MMCloud_request$file$list";
         public static readonly string REQUEST_FILE = "_MMCloud_request$file";
         public static readonly string RENAME_FILE = "_MMCloud_rename$file";
