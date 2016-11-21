@@ -254,7 +254,7 @@ namespace MMServer
                         return;
                     }
                     string pathstr = Path.Combine(cloudPath.Text, username, filename);
-                    File.Create(pathstr);
+                    File.Create(pathstr).Close(); //close it...
                     current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
                 }
                 else if (text.IndexOf(Utility.REQUEST_FILE_LIST) > -1)
@@ -320,38 +320,19 @@ namespace MMServer
                 Array.Copy(buffer, recBuf, received);
                 string text = Encoding.ASCII.GetString(recBuf);
 
-                if (text.IndexOf(Utility.END_UPLOAD) > -1) //finish transfer
-                {
-                    writeOnConsole("File upload is done...");
-                    string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-                    SaveOnDisk(filePath, username);
-                    string msg = "File upload is done...";
-                    byte[] data = Encoding.ASCII.GetBytes(msg);
-                    try { current.Send(data); }
-                    catch (Exception e)
-                    {
-                        writeOnConsole(e.Message);
-                        writeOnConsole(username + " is disconnected from Server...");
-                        current.Close();
-                        clientSockets.Remove(current);
-                        return;
-                    }
-                }
-                else //get data
-                {
-                    string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-                    AppendAllBytes(filePath, buffer);
-                    current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
-                }
+               //get data
+               string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
+               AppendAllBytes(filePath, username, buffer);
+               current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
             }
             else
             {
                 writeOnConsole("File upload is done...");
                 string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
                 SaveOnDisk(filePath, username);
-                string msg = "File upload is done...";
-                byte[] data = Encoding.ASCII.GetBytes(msg);
-                try { current.Send(data); }
+                //string msg = "File upload is done...";
+                //byte[] data = Encoding.ASCII.GetBytes(msg);
+                /*try { current.Send(data); }
                 catch (Exception e)
                 {
                     writeOnConsole(e.Message);
@@ -359,7 +340,7 @@ namespace MMServer
                     current.Close();
                     clientSockets.Remove(current);
                     return;
-                }
+                }*/
             }
         }
 
@@ -411,15 +392,19 @@ namespace MMServer
             });
         }
 
-        public static void AppendAllBytes(string path, byte[] bytes)
+        public void AppendAllBytes(string path, string username, byte[] bytes)
         {
+            path = Path.Combine(cloudPath.Text, username, path);
             bool isFileExists = File.Exists(path);
 
-            using (var stream = new FileStream(path, FileMode.Append))
+            using (
+            var stream = new FileStream(path, FileMode.Append))
             {
                 if (isFileExists)
                     stream.Seek(stream.Length, SeekOrigin.Begin);
                 stream.Write(bytes, 0, bytes.Length);
+                stream.Flush();
+                stream.Close();
             }
         }
 
@@ -448,6 +433,7 @@ namespace MMServer
 
         private void SaveOnDisk(string filePath, string username)
         {
+            filePath = Path.Combine(cloudPath.Text, username, filePath);
             if (File.Exists(filePath))
             {
                 FileInfo fileInfo = new FileInfo(filePath);
