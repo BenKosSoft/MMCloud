@@ -209,9 +209,9 @@ namespace MMClient
                         {
                             utility.SendString(string1);
                             utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
-                            sendDone.WaitOne();
+                            //sendDone.WaitOne();
                             writeOnConsole("here");
-                            utility.SendString(string2);
+                            //utility.SendString(string2);
                         }
                         catch (SocketException)
                         {

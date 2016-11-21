@@ -255,7 +255,7 @@ namespace MMServer
                     }
                     string pathstr = Path.Combine(cloudPath.Text, username, filename);
                     File.Create(pathstr).Close(); //close it...
-                    current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
+                    //current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
                 }
                 else if (text.IndexOf(Utility.REQUEST_FILE_LIST) > -1)
                 {
@@ -268,6 +268,13 @@ namespace MMServer
                     string toBeDeleted = text.Split(':')[1];
                     File.Delete(toBeDeleted);
                     DeleteFromDisk(toBeDeleted, username);
+                }
+                else
+                {
+                    //get data
+                    string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
+                    filePath = Path.Combine(cloudPath.Text, username, filePath);
+                    AppendAllBytes(filePath, buffer);
                 }
                 //TODO: new else ifs will come in the next steps.
             }
@@ -285,65 +292,66 @@ namespace MMServer
             }
         }
 
-        private void FileCallBack(IAsyncResult AR)
-        {
-            Socket current = (Socket)AR.AsyncState;
-            string username;
-            clientSockets.TryGetValue(current, out username);
-            if (!Utility.IsSocketConnected(current))
-            {
-                writeOnConsole(username + " is disconnected from Server...");
-                current.Close();
-                clientSockets.Remove(current);
-                return;
-            }
+        //private void FileCallBack(IAsyncResult AR)
+        //{
+        //    Socket current = (Socket)AR.AsyncState;
+        //    string username;
+        //    clientSockets.TryGetValue(current, out username);
+        //    if (!Utility.IsSocketConnected(current))
+        //    {
+        //        writeOnConsole(username + " is disconnected from Server...");
+        //        current.Close();
+        //        clientSockets.Remove(current);
+        //        return;
+        //    }
 
-            int received;
-            try
-            {
-                received = current.EndReceive(AR);
-            }
-            catch (Exception e)
-            {
-                writeOnConsole(e.Message);
-                writeOnConsole(username + " is disconnected from Server...");
-                // Don't shutdown because the socket may be disposed and its disconnected anyway.
-                current.Close();
-                clientSockets.Remove(current);
-                return;
-            }
+        //    int received;
+        //    try
+        //    {
+        //        received = current.EndReceive(AR);
+        //    }
+        //    catch (Exception e)
+        //    {
+        //        writeOnConsole(e.Message);
+        //        writeOnConsole(username + " is disconnected from Server...");
+        //        // Don't shutdown because the socket may be disposed and its disconnected anyway.
+        //        current.Close();
+        //        clientSockets.Remove(current);
+        //        return;
+        //    }
 
-            writeOnConsole(string.Format("received size: {0}", received));
-            if(received > 0)
-            {
-               byte[] recBuf = new byte[received];
-               Array.Copy(buffer, recBuf, received);
-               string text = Encoding.ASCII.GetString(recBuf);
+        //    writeOnConsole(string.Format("received size: {0}", received));
+        //    if(received > 0)
+        //    {
+        //       byte[] recBuf = new byte[received];
+        //       Array.Copy(buffer, recBuf, received);
+        //       string text = Encoding.ASCII.GetString(recBuf);
 
-               //get data
-               string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-               filePath = Path.Combine(cloudPath.Text, username, filePath);
-               AppendAllBytes(filePath, buffer);
-               current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
-            }
-            else
-            {
-                writeOnConsole("File upload is done...");
-                string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-                SaveOnDisk(filePath, username);
-                //string msg = "File upload is done...";
-                //byte[] data = Encoding.ASCII.GetBytes(msg);
-                /*try { current.Send(data); }
-                catch (Exception e)
-                {
-                    writeOnConsole(e.Message);
-                    writeOnConsole(username + " is disconnected from Server...");
-                    current.Close();
-                    clientSockets.Remove(current);
-                    return;
-                }*/
-            }
-        }
+        //       //get data
+        //       string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
+        //       filePath = Path.Combine(cloudPath.Text, username, filePath);
+        //       AppendAllBytes(filePath, buffer);
+        //       current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
+        //    }
+        //    else
+        //    {
+        //        writeOnConsole("File upload is done...");
+        //        string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
+        //        SaveOnDisk(filePath, username);
+        //        //string msg = "File upload is done...";
+        //        //byte[] data = Encoding.ASCII.GetBytes(msg);
+        //        /*try { current.Send(data); }
+        //        catch (Exception e)
+        //        {
+        //            writeOnConsole(e.Message);
+        //            writeOnConsole(username + " is disconnected from Server...");
+        //            current.Close();
+        //            clientSockets.Remove(current);
+        //            return;
+        //        }*/
+        //    }
+        //    current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+        //}
 
         /// <summary>
         /// Close all connected client (we do not need to shutdown the server socket as its connections
