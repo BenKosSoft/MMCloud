@@ -41,6 +41,8 @@ namespace MMClient
             MinimizeBox = false;
             // Set the start position of the form to the center of the screen.
             StartPosition = FormStartPosition.CenterScreen;
+
+            Response = new StringBuilder();
             
             InitializeComponent();
         }
@@ -104,7 +106,7 @@ namespace MMClient
         private void lbl_refresh_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
         {
             writeOnConsole("User requested refreshing file list");
-            label2.Text = "Refreshing file list....";
+            lbl_fileListStatus.Text = "Refreshing file list....";
             try
             {
                 utility.SendString(Utility.REQUEST_FILE_LIST);
@@ -115,8 +117,16 @@ namespace MMClient
                 btn_logout_Click(sender, e);
             }
 
-            ReceiveResponse();
-            receiveDone.WaitOne();
+            try
+            {
+                ReceiveResponse();
+                receiveDone.WaitOne();
+            }
+            catch(SocketException)
+            {
+                MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                btn_logout_Click(sender, e);
+            }
 
             // File list has arrived; process it.
             if (Response.Length > 1)
@@ -129,8 +139,9 @@ namespace MMClient
                     lv_fileList.Items.Add(item);
                 }
             }
+            Response.Clear();
             writeOnConsole("Done refreshing file list.");
-            label2.Text = "Click an item for more options";
+            lbl_fileListStatus.Text = "Click an item for more options";
         }
 
         private void btn_browse_Click(object sender, EventArgs e)
@@ -179,30 +190,35 @@ namespace MMClient
                     retry = false;
                     if (File.Exists(s))
                     {
-                        lbl_uploadStatus.Text = "Uploading " + s + "...";
+                        string filename = Path.GetFileName(s);
+                        lbl_uploadStatus.Text = "Uploading " + filename + "...";
                         writeOnConsole("Uploading " + s);
 
                         // Send a file to the remote device with preBuffer and postBuffer data.
 
                         // Create the preBuffer data.
-                        string string1 = String.Format(Utility.BEGIN_UPLOAD + " file:{0}{1}", s, Environment.NewLine);
+                        string string1 = String.Format(Utility.BEGIN_UPLOAD + ":{0}", filename);
                         byte[] preBuf = Encoding.UTF8.GetBytes(string1);
 
                         // Create the postBuffer data.
-                        string string2 = String.Format(Utility.END_UPLOAD + " file: {0}{1}", s, Environment.NewLine);
+                        string string2 = String.Format(Utility.END_UPLOAD + ":{0}", filename);
                         byte[] postBuf = Encoding.UTF8.GetBytes(string2);
 
                         //Send file s with buffers and default flags to the remote device.
-                        //try
-                        //{
-                        //utility.ClientSocket.BeginSendFile(s, preBuf, postBuf, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
-                        //    sendDone.WaitOne();
-                        //}
-                        //catch (SocketException)
-                        //{
-                        //    MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        //    btn_logout_Click(sender, e);
-                        //}
+                        try
+                        {
+                            utility.SendString(string1);
+                            utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
+                            sendDone.WaitOne();
+                            writeOnConsole("here");
+                            utility.SendString(string2);
+                        }
+                        catch (SocketException)
+                        {
+                            MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            //TODO: need to cancel send file operation and clear filelist here.
+                            btn_logout_Click(sender, e);
+                        }
                     }
                     else
                     {
@@ -246,6 +262,7 @@ namespace MMClient
             Socket client = (Socket)ar.AsyncState;
 
             // Complete sending the data to the remote device.
+            writeOnConsole("filesendcallback eneterd");
             client.EndSendFile(ar);
             sendDone.Set();
         }

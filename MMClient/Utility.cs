@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -55,6 +56,18 @@ namespace MMClient
         public static bool IsSocketConnected(Socket s)
         {
             return !(!s.Connected || (s.Poll(1000, SelectMode.SelectRead) && (s.Available == 0)));
+        }
+
+        public static void AppendAllBytes(string path, byte[] bytes)
+        {
+            bool isFileExists = File.Exists(path);
+
+            using (var stream = new FileStream(path, FileMode.Append))
+            {
+                if (isFileExists)
+                    stream.Seek(stream.Length, SeekOrigin.Begin);
+                stream.Write(bytes, 0, bytes.Length);
+            }
         }
         //=================================================================================
         //=================================================================================

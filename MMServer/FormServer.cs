@@ -253,6 +253,8 @@ namespace MMServer
                         clientSockets.Remove(current);
                         return;
                     }
+                    string pathstr = Path.Combine(cloudPath.Text, username, filename);
+                    File.Create(pathstr);
                     current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
                 }
                 else if (text.IndexOf(Utility.REQUEST_FILE_LIST) > -1)
@@ -311,6 +313,7 @@ namespace MMServer
                 return;
             }
 
+            writeOnConsole(string.Format("received size: {0}", received));
             if(received > 0)
             {
                 byte[] recBuf = new byte[received];
@@ -397,7 +400,7 @@ namespace MMServer
 
             using (var stream = new FileStream(path, FileMode.Append))
             {
-                if(isFileExists)
+                if (isFileExists)
                     stream.Seek(stream.Length, SeekOrigin.Begin);
                 stream.Write(bytes, 0, bytes.Length);
             }

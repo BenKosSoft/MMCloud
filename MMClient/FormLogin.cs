@@ -93,28 +93,29 @@ namespace MMClient
             }
             Username = txt_username.Text;
             utility.Username = Username;
-            
-            //try
-            //{
-            //    utility.ConnectToServer();
-            //}
-            //catch (SocketException)
-            //{
-            //    MessageBox.Show("Server connection cannot be established!", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //}
-            
-            
-            //if (!Utility.IsSocketConnected(Utility.ClientSocket))
-            //{
-            //    MessageBox.Show("Username is currently used in another session!", "Error!");
-            //}else
-            //{
+
+            try
+            {
+                utility.ConnectToServer();
+            }
+            catch (SocketException)
+            {
+                MessageBox.Show("Server connection cannot be established!", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+
+
+            if (!Utility.IsSocketConnected(utility.ClientSocket))
+            {
+                MessageBox.Show("Username is currently used in another session!", "Error!");
+            }
+            else
+            {
                 btn_connect.Enabled = false;
                 this.Hide();
                 form_client fc = new form_client();
                 fc.utility = utility;
                 fc.Show();
-            //}
+            }
         }
     }
 }

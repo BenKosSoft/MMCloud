@@ -35,7 +35,7 @@
             this.txt_filepath = new System.Windows.Forms.TextBox();
             this.btn_browse = new System.Windows.Forms.Button();
             this.lbl_fileList = new System.Windows.Forms.Label();
-            this.label2 = new System.Windows.Forms.Label();
+            this.lbl_fileListStatus = new System.Windows.Forms.Label();
             this.btn_upload = new System.Windows.Forms.Button();
             this.rtb_activity = new System.Windows.Forms.RichTextBox();
             this.lbl_activity = new System.Windows.Forms.Label();
@@ -99,14 +99,14 @@
             this.lbl_fileList.TabIndex = 6;
             this.lbl_fileList.Text = "File List:";
             // 
-            // label2
+            // lbl_fileListStatus
             // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(9, 230);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(145, 13);
-            this.label2.TabIndex = 7;
-            this.label2.Text = "Click an item for more options";
+            this.lbl_fileListStatus.AutoSize = true;
+            this.lbl_fileListStatus.Location = new System.Drawing.Point(9, 230);
+            this.lbl_fileListStatus.Name = "lbl_fileListStatus";
+            this.lbl_fileListStatus.Size = new System.Drawing.Size(145, 13);
+            this.lbl_fileListStatus.TabIndex = 7;
+            this.lbl_fileListStatus.Text = "Click an item for more options";
             // 
             // btn_upload
             // 
@@ -155,10 +155,10 @@
             this.lbl_refresh.Text = "Refresh";
             this.lbl_refresh.LinkClicked += new System.Windows.Forms.LinkLabelLinkClickedEventHandler(this.lbl_refresh_LinkClicked);
             // 
-            // lw_fileList
+            // lv_fileList
             // 
             this.lv_fileList.Location = new System.Drawing.Point(12, 68);
-            this.lv_fileList.Name = "lw_fileList";
+            this.lv_fileList.Name = "lv_fileList";
             this.lv_fileList.Size = new System.Drawing.Size(264, 159);
             this.lv_fileList.TabIndex = 13;
             this.lv_fileList.UseCompatibleStateImageBehavior = false;
@@ -174,7 +174,7 @@
             this.Controls.Add(this.lbl_activity);
             this.Controls.Add(this.rtb_activity);
             this.Controls.Add(this.btn_upload);
-            this.Controls.Add(this.label2);
+            this.Controls.Add(this.lbl_fileListStatus);
             this.Controls.Add(this.lbl_fileList);
             this.Controls.Add(this.btn_browse);
             this.Controls.Add(this.txt_filepath);
@@ -197,7 +197,7 @@
         private System.Windows.Forms.TextBox txt_filepath;
         private System.Windows.Forms.Button btn_browse;
         private System.Windows.Forms.Label lbl_fileList;
-        private System.Windows.Forms.Label label2;
+        private System.Windows.Forms.Label lbl_fileListStatus;
         private System.Windows.Forms.Button btn_upload;
         private System.Windows.Forms.RichTextBox rtb_activity;
         private System.Windows.Forms.Label lbl_activity;
