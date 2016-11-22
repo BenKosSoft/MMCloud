@@ -101,7 +101,7 @@ namespace MMClient
             catch (SocketException)
             {
                 MessageBox.Show("Server connection cannot be established!", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                //MERT: return statement is needed here...
+                return;
             }
 
 

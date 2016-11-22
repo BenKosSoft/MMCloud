@@ -31,8 +31,6 @@ namespace MMClient
         public string Username { get; set; }
 
         // ManualResetEvent instance signal completion.
-        private static ManualResetEvent connectDone =
-            new ManualResetEvent(false);
         private static ManualResetEvent sendDone =
             new ManualResetEvent(false);
 
@@ -62,11 +60,14 @@ namespace MMClient
         {
             bool isFileExists = File.Exists(path);
 
-            using (var stream = new FileStream(path, FileMode.Append))
+            using (
+            var stream = new FileStream(path, FileMode.Append))
             {
                 if (isFileExists)
                     stream.Seek(stream.Length, SeekOrigin.Begin);
                 stream.Write(bytes, 0, bytes.Length);
+                stream.Flush();
+                stream.Close();
             }
         }
         //=================================================================================
@@ -78,26 +79,11 @@ namespace MMClient
             ClientSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
 
             //Connect to remote server
-            ClientSocket.BeginConnect(ServerIp, Port, new AsyncCallback(ConnectCallback), ClientSocket);
-            connectDone.WaitOne();
+            ClientSocket.Connect(ServerIp, Port);
 
             SendString(Username);
-            //MERT: No need to sleep, maybe 1ms is enough, with 2 pcs maybe some sleep is need, we need to test.
-            Thread.Sleep(1000);
         }
 
-        private void ConnectCallback(IAsyncResult ar)
-        {
-            // Retrieve the socket from the state object.
-            Socket client = (Socket)ar.AsyncState;
-
-            // Complete the connection.
-            //MERT: try catch is needed if server connection establishment is not success, this is giving an error...
-            client.EndConnect(ar);
-
-            // Signal that the connection has been made.
-            connectDone.Set();
-        }
 
         public void DisconnectFromServer()
         {
@@ -119,8 +105,12 @@ namespace MMClient
             Socket client = (Socket)ar.AsyncState;
 
             // Complete sending the data to the remote device.
-            //MERT: try catch statement is need, if users want to send smt to dead server.
-            int bytesSent = client.EndSend(ar);
+            try
+            {
+                int bytesSent = client.EndSend(ar);
+            }
+            catch(Exception)
+            {}
 
             // Signal that all bytes have been sent.
             sendDone.Set();
