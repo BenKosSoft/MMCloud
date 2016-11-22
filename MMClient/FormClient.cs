@@ -172,6 +172,11 @@ namespace MMClient
 
         private void btn_upload_Click(object sender, EventArgs e)
         {
+            if (txt_filepath.Text == "")
+            {
+                MessageBox.Show("File path cannot be left empty", "Empty fields!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
+                return;
+            }
             //HACK: This won't work while sending multiple files, make it background worker.
             btn_upload.Enabled = false;
             lbl_uploadStatus.Text = "Upload starting...";
