@@ -233,7 +233,7 @@ namespace MMServer
             {
                 byte[] recBuf = new byte[received];
                 Array.Copy(buffer, recBuf, received);
-                string text = Encoding.ASCII.GetString(recBuf);
+                string text = Encoding.UTF8.GetString(recBuf);
 
                 if (text.IndexOf(Utility.BEGIN_UPLOAD) > -1)  //file transfer is started...
                 {
@@ -260,6 +260,10 @@ namespace MMServer
                     File.Create(pathstr).Close(); //close it...
                     //current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
                 }
+                /*else if (text.IndexOf(Utility.END_UPLOAD) > -1)
+                {
+                    writeOnConsole(text);
+                }*/
                 else if (text.IndexOf(Utility.REQUEST_FILE_LIST) > -1)
                 {
                     //request refresh of list of files
@@ -277,7 +281,15 @@ namespace MMServer
                     //get data
                     string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
                     filePath = Path.Combine(cloudPath.Text, username, filePath);
-                    AppendAllBytes(filePath, buffer, received);
+                    bool eof = AppendAllBytes(filePath, buffer, received);
+                    if (eof)
+                    {
+                        writeOnConsole("Done!");
+                    }
+                    lock (buffer)
+                    {
+                        Array.Clear(buffer, 0, buffer.Length);
+                    }
                 }
                 //TODO: new else ifs will come in the next steps.
             }
@@ -404,12 +416,11 @@ namespace MMServer
             });
         }
 
-        public void AppendAllBytes(string path, byte[] bytes, int size)
+        public bool AppendAllBytes(string path, byte[] bytes, int size)
         {
             bool isFileExists = File.Exists(path);
 
-            using (
-            var stream = new FileStream(path, FileMode.Append))
+            using (var stream = new FileStream(path, FileMode.Append))
             {
                 if (isFileExists)
                     stream.Seek(stream.Length, SeekOrigin.Begin);
@@ -417,6 +428,11 @@ namespace MMServer
                 stream.Flush();
                 stream.Close();
             }
+
+            //HACK:
+            if (size < 2048)
+                return true;
+            return false;
         }
 
         private void SendFileList(Socket current, string username)

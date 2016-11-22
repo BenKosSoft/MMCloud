@@ -216,7 +216,7 @@ namespace MMClient
                             utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
                             sendDone.WaitOne();
                             //writeOnConsole("here");
-                            utility.SendString(string2);
+                            //utility.SendString(string2);
                         }
                         catch (SocketException)
                         {
@@ -271,7 +271,7 @@ namespace MMClient
             try
             {
                 client.EndSendFile(ar);
-                Thread.Sleep(2000);
+                //Thread.Sleep(2000);
             }
             catch (Exception)
             {}
