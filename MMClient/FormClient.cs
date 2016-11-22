@@ -177,7 +177,7 @@ namespace MMClient
                 MessageBox.Show("File path cannot be left empty", "Empty fields!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
             }
-            //HACK: This won't work while sending multiple files, make it background worker.
+            //HACK: This won't work while sending multiple files, make it background worker. (Or will it??)
             btn_upload.Enabled = false;
             lbl_uploadStatus.Text = "Upload starting...";
             writeOnConsole("User started upload request");
@@ -215,8 +215,8 @@ namespace MMClient
                             utility.SendString(string1);
                             utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
                             sendDone.WaitOne();
-                            writeOnConsole("here");
-                            //utility.SendString(string2);
+                            //writeOnConsole("here");
+                            utility.SendString(string2);
                         }
                         catch (SocketException)
                         {
@@ -271,6 +271,7 @@ namespace MMClient
             try
             {
                 client.EndSendFile(ar);
+                Thread.Sleep(2000);
             }
             catch (Exception)
             {}
@@ -313,7 +314,7 @@ namespace MMClient
         private void writeOnConsole(string text)
         {
             StringBuilder sb = new StringBuilder().Append("\n>> ").Append(text);
-            Invoke((MethodInvoker)delegate
+            rtb_activity.Invoke((MethodInvoker)delegate
             {
                 rtb_activity.AppendText(sb.ToString());
             });
