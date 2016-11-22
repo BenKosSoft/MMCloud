@@ -56,7 +56,7 @@ namespace MMClient
             return !(!s.Connected || (s.Poll(1000, SelectMode.SelectRead) && (s.Available == 0)));
         }
 
-        public static void AppendAllBytes(string path, byte[] bytes)
+        public void AppendAllBytes(string path, byte[] bytes, int size)
         {
             bool isFileExists = File.Exists(path);
 
@@ -65,7 +65,7 @@ namespace MMClient
             {
                 if (isFileExists)
                     stream.Seek(stream.Length, SeekOrigin.Begin);
-                stream.Write(bytes, 0, bytes.Length);
+                stream.Write(bytes, 0, size);
                 stream.Flush();
                 stream.Close();
             }

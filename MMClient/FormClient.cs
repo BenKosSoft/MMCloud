@@ -214,7 +214,7 @@ namespace MMClient
                         {
                             utility.SendString(string1);
                             utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
-                            //sendDone.WaitOne();
+                            sendDone.WaitOne();
                             writeOnConsole("here");
                             //utility.SendString(string2);
                         }
@@ -268,7 +268,12 @@ namespace MMClient
 
             // Complete sending the data to the remote device.
             //writeOnConsole("filesendcallback eneterd");
-            client.EndSendFile(ar);
+            try
+            {
+                client.EndSendFile(ar);
+            }
+            catch (Exception)
+            {}
             sendDone.Set();
         }
 

@@ -277,7 +277,7 @@ namespace MMServer
                     //get data
                     string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
                     filePath = Path.Combine(cloudPath.Text, username, filePath);
-                    AppendAllBytes(filePath, buffer);
+                    AppendAllBytes(filePath, buffer, received);
                 }
                 //TODO: new else ifs will come in the next steps.
             }
@@ -404,7 +404,7 @@ namespace MMServer
             });
         }
 
-        public void AppendAllBytes(string path, byte[] bytes)
+        public void AppendAllBytes(string path, byte[] bytes, int size)
         {
             bool isFileExists = File.Exists(path);
 
@@ -413,7 +413,7 @@ namespace MMServer
             {
                 if (isFileExists)
                     stream.Seek(stream.Length, SeekOrigin.Begin);
-                stream.Write(bytes, 0, bytes.Length);
+                stream.Write(bytes, 0, size);
                 stream.Flush();
                 stream.Close();
             }
