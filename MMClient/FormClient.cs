@@ -155,7 +155,8 @@ namespace MMClient
             openFileDialog.Filter = "All files (*.*)|*.*";
             openFileDialog.FilterIndex = 1;
             openFileDialog.RestoreDirectory = true;
-            openFileDialog.Multiselect = true;
+            //UNDONE: FIX MULTISELECT!!!!
+            openFileDialog.Multiselect = false;
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -215,8 +216,11 @@ namespace MMClient
                             utility.SendString(string1);
                             utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
                             sendDone.WaitOne();
-                            //writeOnConsole("here");
-                            //utility.SendString(string2);
+                            bool isHack = new FileInfo(s).Length % 2048 != 0;
+                            if (!isHack)
+                            {
+                                utility.SendString(string2);
+                            }
                         }
                         catch (SocketException)
                         {
@@ -254,6 +258,7 @@ namespace MMClient
                 } while (retry);
             }
             filesToUpload.Clear();
+            //HACK: wrong ui update timing
             lbl_uploadStatus.Text = "Upload done";
             writeOnConsole("Upload is finished");
             txt_filepath.Clear();
@@ -270,8 +275,9 @@ namespace MMClient
             //writeOnConsole("filesendcallback eneterd");
             try
             {
+                //UNDONE: update UI here....
                 client.EndSendFile(ar);
-                //Thread.Sleep(2000);
+                Thread.Sleep(2000);
             }
             catch (Exception)
             {}

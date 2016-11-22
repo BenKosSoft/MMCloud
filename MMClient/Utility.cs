@@ -82,6 +82,8 @@ namespace MMClient
             ClientSocket.Connect(ServerIp, Port);
 
             SendString(Username);
+
+            Thread.Sleep(1000);
         }
 
 
