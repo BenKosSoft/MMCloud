@@ -22,7 +22,8 @@ namespace MMServer
         public static ManualResetEvent allDone = new ManualResetEvent(false);
 
         private static Socket serverSocket = null;
-        private static Dictionary<Socket,string> clientSockets = new Dictionary<Socket,string>();
+        private static Dictionary<Socket, string> clientSockets = new Dictionary<Socket, string>();
+        private static Dictionary<string, byte[]> clientBuffers = new Dictionary<string, byte[]>();
 
         private const int BUFFER_SIZE = 2048;
         private static readonly byte[] buffer = new byte[BUFFER_SIZE];
@@ -54,7 +55,7 @@ namespace MMServer
             path = sb.Append(path).Append(@"\MMCloud\.path").ToString();
             if (File.Exists(path))
             {
-                string [] paths = File.ReadAllLines(path);
+                string[] paths = File.ReadAllLines(path);
                 cloudPath.Text = paths[0];
             }
         }
@@ -82,7 +83,7 @@ namespace MMServer
             sw.Close();
 
             ushort port;
-            if(!UInt16.TryParse(portText.Text, out port))
+            if (!UInt16.TryParse(portText.Text, out port))
             {
                 writeOnConsole("Port number is invalid, please try again...");
                 MessageBox.Show("Port number is invalid!", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -175,10 +176,13 @@ namespace MMServer
             {
                 writeOnConsole(username + " is connected, welcome to the cloud...");
                 clientSockets.Add(current, username);
-                if (Directory.Exists(Path.Combine(cloudPath.Text, username))){ //if user exists return her files.
+                clientBuffers.Add(username, new byte[BUFFER_SIZE]);
+                if (Directory.Exists(Path.Combine(cloudPath.Text, username)))
+                { //if user exists return her files.
                     SendFileList(current, username);
                 }
-                else{ //create user directory
+                else
+                { //create user directory
                     string newPath = Path.Combine(cloudPath.Text, username);
                     Directory.CreateDirectory(newPath);
                     writeOnConsole(username + " directory is created...");
@@ -188,7 +192,10 @@ namespace MMServer
 
                 try
                 {
-                    current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+                    byte[] userBuffer;
+                    clientBuffers.TryGetValue(username, out userBuffer);
+                    //For each users, buffer is different... thats why we send userBuffer to callback...
+                    current.BeginReceive(userBuffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
                 }
                 catch (Exception e)
                 {
@@ -205,7 +212,9 @@ namespace MMServer
         {
             Socket current = (Socket)AR.AsyncState;
             string username;
+            byte[] buffer;
             clientSockets.TryGetValue(current, out username);
+            clientBuffers.TryGetValue(username, out buffer);
             if (!Utility.IsSocketConnected(current))
             {
                 writeOnConsole(username + " is disconnected from Server...");
@@ -229,7 +238,7 @@ namespace MMServer
                 return;
             }
 
-            if(received > 0)
+            if (received > 0)
             {
                 byte[] recBuf = new byte[received];
                 Array.Copy(buffer, recBuf, received);
@@ -258,19 +267,19 @@ namespace MMServer
                     }
                     string pathstr = Path.Combine(cloudPath.Text, username, filename);
                     File.Create(pathstr).Close(); //close it...
-                    //current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
+                                                  //current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
                 }
-                /*else if (text.IndexOf(Utility.END_UPLOAD) > -1)
+                else if (text.IndexOf(Utility.END_UPLOAD) > -1)
                 {
-                    writeOnConsole(text);
-                }*/
+                    writeOnConsole("DONE!");
+                }
                 else if (text.IndexOf(Utility.REQUEST_FILE_LIST) > -1)
                 {
                     //request refresh of list of files
                     SendFileList(current, username);
                 }
                 else if (text.IndexOf(Utility.DELETE_FILE) > -1)
-                    //TODO: Delete From Disk function will be covered again...
+                //TODO: Delete From Disk function will be covered again...
                 {
                     string toBeDeleted = text.Split(':')[1];
                     File.Delete(toBeDeleted);
@@ -293,11 +302,12 @@ namespace MMServer
                 }
                 //TODO: new else ifs will come in the next steps.
             }
-            
+
             try
             {
                 current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
-            }catch(Exception e)
+            }
+            catch (Exception e)
             {
                 writeOnConsole(e.Message);
                 writeOnConsole(username + " is disconnected from Server...");
@@ -305,68 +315,8 @@ namespace MMServer
                 clientSockets.Remove(current);
                 return;
             }
+
         }
-
-        //private void FileCallBack(IAsyncResult AR)
-        //{
-        //    Socket current = (Socket)AR.AsyncState;
-        //    string username;
-        //    clientSockets.TryGetValue(current, out username);
-        //    if (!Utility.IsSocketConnected(current))
-        //    {
-        //        writeOnConsole(username + " is disconnected from Server...");
-        //        current.Close();
-        //        clientSockets.Remove(current);
-        //        return;
-        //    }
-
-        //    int received;
-        //    try
-        //    {
-        //        received = current.EndReceive(AR);
-        //    }
-        //    catch (Exception e)
-        //    {
-        //        writeOnConsole(e.Message);
-        //        writeOnConsole(username + " is disconnected from Server...");
-        //        // Don't shutdown because the socket may be disposed and its disconnected anyway.
-        //        current.Close();
-        //        clientSockets.Remove(current);
-        //        return;
-        //    }
-
-        //    writeOnConsole(string.Format("received size: {0}", received));
-        //    if(received > 0)
-        //    {
-        //       byte[] recBuf = new byte[received];
-        //       Array.Copy(buffer, recBuf, received);
-        //       string text = Encoding.ASCII.GetString(recBuf);
-
-        //       //get data
-        //       string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-        //       filePath = Path.Combine(cloudPath.Text, username, filePath);
-        //       AppendAllBytes(filePath, buffer);
-        //       current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
-        //    }
-        //    else
-        //    {
-        //        writeOnConsole("File upload is done...");
-        //        string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-        //        SaveOnDisk(filePath, username);
-        //        //string msg = "File upload is done...";
-        //        //byte[] data = Encoding.ASCII.GetBytes(msg);
-        //        /*try { current.Send(data); }
-        //        catch (Exception e)
-        //        {
-        //            writeOnConsole(e.Message);
-        //            writeOnConsole(username + " is disconnected from Server...");
-        //            current.Close();
-        //            clientSockets.Remove(current);
-        //            return;
-        //        }*/
-        //    }
-        //    current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
-        //}
 
         /// <summary>
         /// Close all connected client (we do not need to shutdown the server socket as its connections
@@ -392,7 +342,7 @@ namespace MMServer
                 CloseAllSockets();
                 changeActivenessOfItems();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 writeOnConsole(ex.Message);
             }
@@ -478,7 +428,8 @@ namespace MMServer
                     writer.WriteLine();
                     writer.Flush();
                     writer.Close();
-                }else
+                }
+                else
                 {
                     writeOnConsole("Something wrong with .shared file...");
                 }
@@ -513,7 +464,8 @@ namespace MMServer
                             writer.WriteLine(s);
                             writer.WriteLine();
                             writer.Flush();
-                        }else
+                        }
+                        else
                         {
                             users = s.Split(':')[4].Split('|');
                         }
@@ -522,7 +474,7 @@ namespace MMServer
                 writer.Close();
 
                 //this is wrong, it cannot be recursive...
-                foreach(string user in users)
+                foreach (string user in users)
                 {
                     DeleteFromDisk(toBeDeleted, user);
                 }
