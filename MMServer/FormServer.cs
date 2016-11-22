@@ -46,6 +46,9 @@ namespace MMServer
             ipLabel.Text = Utility.getMyIp().ToString();
             logText.Text = ">> Hello Server";
 
+            //MERT: read only log text
+            logText.ReadOnly = true;
+
             StringBuilder sb = new StringBuilder();
             string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             path = sb.Append(path).Append(@"\MMCloud\.path").ToString();

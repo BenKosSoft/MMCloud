@@ -82,6 +82,7 @@ namespace MMClient
             connectDone.WaitOne();
 
             SendString(Username);
+            //MERT: No need to sleep, maybe 1ms is enough, with 2 pcs maybe some sleep is need, we need to test.
             Thread.Sleep(1000);
         }
 
@@ -91,6 +92,7 @@ namespace MMClient
             Socket client = (Socket)ar.AsyncState;
 
             // Complete the connection.
+            //MERT: try catch is needed if server connection establishment is not success, this is giving an error...
             client.EndConnect(ar);
 
             // Signal that the connection has been made.
@@ -117,6 +119,7 @@ namespace MMClient
             Socket client = (Socket)ar.AsyncState;
 
             // Complete sending the data to the remote device.
+            //MERT: try catch statement is need, if users want to send smt to dead server.
             int bytesSent = client.EndSend(ar);
 
             // Signal that all bytes have been sent.
