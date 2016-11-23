@@ -155,8 +155,7 @@ namespace MMClient
             openFileDialog.Filter = "All files (*.*)|*.*";
             openFileDialog.FilterIndex = 1;
             openFileDialog.RestoreDirectory = true;
-            //UNDONE: FIX MULTISELECT!!!!
-            openFileDialog.Multiselect = false;
+            openFileDialog.Multiselect = true;
 
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
@@ -200,27 +199,18 @@ namespace MMClient
                         lbl_uploadStatus.Text = "Uploading " + filename + "...";
                         writeOnConsole("Uploading " + s);
 
-                        // Send a file to the remote device with preBuffer and postBuffer data.
+                        // Send a file to the remote device with preBuffer data.
 
                         // Create the preBuffer data.
-                        string string1 = String.Format(Utility.BEGIN_UPLOAD + ":{0}", filename);
-                        byte[] preBuf = Encoding.UTF8.GetBytes(string1);
-
-                        // Create the postBuffer data.
-                        string string2 = String.Format(Utility.END_UPLOAD + ":{0}", filename);
-                        byte[] postBuf = Encoding.UTF8.GetBytes(string2);
+                        string string1 = String.Format(Utility.BEGIN_UPLOAD + ":{0}:{1}", filename, new FileInfo(s).Length);
 
                         //Send file s with buffers and default flags to the remote device.
                         try
                         {
                             utility.SendString(string1);
+                            sendDone.Reset();
                             utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
                             sendDone.WaitOne();
-                            bool isHack = new FileInfo(s).Length % 2048 != 0;
-                            if (!isHack)
-                            {
-                                utility.SendString(string2);
-                            }
                         }
                         catch (SocketException)
                         {

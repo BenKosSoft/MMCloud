@@ -95,8 +95,10 @@ namespace MMClient
 
         public void SendString(string text)
         {
+            sendDone.Reset();
             byte[] buffer = Encoding.ASCII.GetBytes(text);
 
+            //TODO: try catch
             ClientSocket.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), ClientSocket);
             sendDone.WaitOne();
         }
