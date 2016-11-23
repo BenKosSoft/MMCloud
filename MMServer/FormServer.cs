@@ -72,7 +72,7 @@ namespace MMServer
         private void Form_Server_Load(object sender, EventArgs e)
         {
             ipLabel.Text = Utility.getMyIp().ToString();
-            logText.Text = ">> Hello Server";
+            logText.Text = ">> Hello Server... Please enter Start Server button to start server...";
 
             //MERT: read only log text
             logText.ReadOnly = true;
@@ -133,7 +133,7 @@ namespace MMServer
                 serverSocket.Listen(100);
                 serverSocket.BeginAccept(AcceptCallback, null);
                 changeActivenessOfItems();
-                writeOnConsole("Server setup complete...");
+                writeOnConsole("Server setup complete... To stop, please enter Stop Server button...");
 
                 //create .log file
                 string logFile = Path.Combine(cloudPath.Text, ".log.");
@@ -278,7 +278,10 @@ namespace MMServer
                     us.fileExtension = filename.Substring(filename.LastIndexOf('.'));
                     us.currentFileSize = 0;
 
-                    writeOnConsole("File is coming...");
+                    StringBuilder sb = new StringBuilder().Append("from ").Append(us.username)
+                        .Append(": File (filename=").Append(us.currentFileName).Append(us.fileExtension)
+                        .Append(", size=").Append(us.totalFileSize).Append(" bytes) is uploading...");
+                    writeOnConsole(sb.ToString());
                     string pathstr = Path.Combine(cloudPath.Text, us.username, us.currentFileName);
                     pathstr = pathstr + ".MMCloud";
                     File.Create(pathstr).Close(); //close it...
@@ -305,8 +308,15 @@ namespace MMServer
 
                     if (us.currentFileSize >= us.totalFileSize) //done
                     {
-                        File.Move(filePath, Path.Combine(cloudName, us.currentFileName + us.fileExtension));
-                        writeOnConsole(us.username + ": Done!");
+                        string newPath = Path.Combine(cloudName, us.currentFileName + us.fileExtension);
+                        if (File.Exists(newPath))
+                            File.Delete(newPath);
+                        File.Move(filePath, newPath);
+                        StringBuilder sb = new StringBuilder().Append("from ").Append(us.username)
+                        .Append(": File (filename=").Append(us.currentFileName).Append(us.fileExtension)
+                        .Append(", size=").Append(us.totalFileSize).Append(" bytes) is uploaded...");
+                        writeOnConsole(sb.ToString());
+                        //TODO: saveOnDisk on .shared file...
                     }
 
                     //TODO: not needed maybe...
@@ -347,7 +357,8 @@ namespace MMServer
             }
 
             serverSocket.Close();
-            writeOnConsole("Good bye Server");
+            writeOnConsole("Server is closing...");
+            writeOnConsole("Good bye Server... :(");
         }
 
         private void stopServer_Click(object sender, EventArgs e)
