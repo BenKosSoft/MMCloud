@@ -16,17 +16,44 @@ using System.Windows.Forms;
 
 namespace MMServer
 {
+    public class UserState
+    {
+        public string username { get; set; }
+        public byte[] buffer { get; set; }
+        public string currentFileName { get; set; }
+        public string fileExtension { get; set; }
+        public long totalFileSize { get; set; }
+        public long currentFileSize { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            var item = obj as UserState;
+            if (item == null) return false;
+            return username.Equals(item.username);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public UserState(string username, byte[] buffer)
+        {
+            this.username = username;
+            this.buffer = buffer;
+        }
+    }
+
     public partial class Form_Server : Form
     {
         // Thread signal.
         public static ManualResetEvent allDone = new ManualResetEvent(false);
 
         private static Socket serverSocket = null;
-        private static Dictionary<Socket, string> clientSockets = new Dictionary<Socket, string>();
-        private static Dictionary<string, byte[]> clientBuffers = new Dictionary<string, byte[]>();
+        private static Dictionary<Socket, UserState> clientInfo = new Dictionary<Socket, UserState>();
 
-        private const int BUFFER_SIZE = 2048;
-        private static readonly byte[] buffer = new byte[BUFFER_SIZE];
+        private const int BUFFER_SIZE = 2097152;
+        private static readonly byte[] bufferGlobal = new byte[BUFFER_SIZE];
 
         private readonly object syncLock = new object();
 
@@ -133,7 +160,7 @@ namespace MMServer
             try
             {
                 socket = serverSocket.EndAccept(AR);
-                socket.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, InitialCallback, socket);
+                socket.BeginReceive(bufferGlobal, 0, BUFFER_SIZE, SocketFlags.None, InitialCallback, socket);
             }
             catch (ObjectDisposedException) // I cannot seem to avoid this (on exit when properly closing sockets)
             {
@@ -160,10 +187,10 @@ namespace MMServer
             }
 
             byte[] recBuf = new byte[received];
-            Array.Copy(buffer, recBuf, received);
+            Array.Copy(bufferGlobal, recBuf, received);
             string username = Encoding.ASCII.GetString(recBuf);
 
-            bool availableUser = !clientSockets.ContainsValue(username);
+            bool availableUser = !clientInfo.ContainsValue(new UserState(username, null));
 
             if (!availableUser)
             {
@@ -175,8 +202,9 @@ namespace MMServer
             else
             {
                 writeOnConsole(username + " is connected, welcome to the cloud...");
-                clientSockets.Add(current, username);
-                clientBuffers.Add(username, new byte[BUFFER_SIZE]);
+                UserState us = new UserState(username, new byte[BUFFER_SIZE]);
+
+                clientInfo.Add(current, us);
                 if (Directory.Exists(Path.Combine(cloudPath.Text, username)))
                 { //if user exists return her files.
                     SendFileList(current, username);
@@ -192,17 +220,15 @@ namespace MMServer
 
                 try
                 {
-                    byte[] userBuffer;
-                    clientBuffers.TryGetValue(username, out userBuffer);
                     //For each users, buffer is different... thats why we send userBuffer to callback...
-                    current.BeginReceive(userBuffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+                    current.BeginReceive(clientInfo[current].buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
                 }
                 catch (Exception e)
                 {
                     writeOnConsole(e.Message);
                     writeOnConsole(username + " is disconnected from Server...");
                     current.Close();
-                    clientSockets.Remove(current);
+                    clientInfo.Remove(current);
                     return;
                 }
             }
@@ -211,15 +237,13 @@ namespace MMServer
         private void ReceiveCallback(IAsyncResult AR)
         {
             Socket current = (Socket)AR.AsyncState;
-            string username;
-            byte[] buffer;
-            clientSockets.TryGetValue(current, out username);
-            clientBuffers.TryGetValue(username, out buffer);
+            UserState us;
+            clientInfo.TryGetValue(current, out us);
             if (!Utility.IsSocketConnected(current))
             {
-                writeOnConsole(username + " is disconnected from Server...");
+                writeOnConsole(us.username + " is disconnected from Server...");
                 current.Close();
-                clientSockets.Remove(current);
+                clientInfo.Remove(current);
                 return;
             }
 
@@ -231,73 +255,64 @@ namespace MMServer
             catch (Exception e)
             {
                 writeOnConsole(e.Message);
-                writeOnConsole(username + " is disconnected from Server...");
+                writeOnConsole(us.username + " is disconnected from Server...");
                 // Don't shutdown because the socket may be disposed and its disconnected anyway.
                 current.Close();
-                clientSockets.Remove(current);
+                clientInfo.Remove(current);
                 return;
             }
 
             if (received > 0)
             {
                 byte[] recBuf = new byte[received];
-                Array.Copy(buffer, recBuf, received);
+                Array.Copy(us.buffer, recBuf, received);
                 string text = Encoding.UTF8.GetString(recBuf);
 
                 if (text.IndexOf(Utility.BEGIN_UPLOAD) > -1)  //file transfer is started...
                 {
-                    //create filename on .path file
                     string filename = text.Split(':')[1];
-                    StreamWriter sw = File.CreateText(Path.Combine(cloudPath.Text, username, ".path"));
-                    sw.WriteLine(filename);
-                    sw.Flush();
-                    sw.Close();
+                    string sizeStr = text.Split(':')[2];
+                    long size = Int64.Parse(sizeStr);
+                    us.totalFileSize = size;
+                    us.currentFileName = filename.Substring(0, filename.LastIndexOf('.'));
+                    us.fileExtension = filename.Substring(filename.LastIndexOf('.'));
+                    us.currentFileSize = 0;
 
                     writeOnConsole("File is coming...");
-                    string msg = "File is uploading... Please wait...";
-                    byte[] data = Encoding.ASCII.GetBytes(msg);
-                    try { current.Send(data); }
-                    catch (Exception e)
-                    {
-                        writeOnConsole(e.Message);
-                        writeOnConsole(username + " is disconnected from Server...");
-                        current.Close();
-                        clientSockets.Remove(current);
-                        return;
-                    }
-                    string pathstr = Path.Combine(cloudPath.Text, username, filename);
+                    string pathstr = Path.Combine(cloudPath.Text, us.username, us.currentFileName);
+                    pathstr = pathstr + ".MMCloud";
                     File.Create(pathstr).Close(); //close it...
-                                                  //current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, FileCallBack, current);
-                }
-                else if (text.IndexOf(Utility.END_UPLOAD) > -1)
-                {
-                    writeOnConsole("DONE!");
                 }
                 else if (text.IndexOf(Utility.REQUEST_FILE_LIST) > -1)
                 {
                     //request refresh of list of files
-                    SendFileList(current, username);
+                    SendFileList(current, us.username);
                 }
                 else if (text.IndexOf(Utility.DELETE_FILE) > -1)
                 //TODO: Delete From Disk function will be covered again...
                 {
                     string toBeDeleted = text.Split(':')[1];
                     File.Delete(toBeDeleted);
-                    DeleteFromDisk(toBeDeleted, username);
+                    DeleteFromDisk(toBeDeleted, us.username);
                 }
                 else
                 {
                     //get data
-                    string filePath = File.ReadAllLines(Path.Combine(cloudPath.Text, username, ".path"))[0];
-                    filePath = Path.Combine(cloudPath.Text, username, filePath);
-                    bool eof = AppendAllBytes(filePath, buffer, received);
-                    if (eof)
+                    string cloudName = Path.Combine(cloudPath.Text, us.username);
+                    string filePath = Path.Combine(cloudName, us.currentFileName + ".MMCloud");
+                    AppendAllBytes(filePath, us.buffer, received);
+                    us.currentFileSize += received;               
+
+                    if (us.currentFileSize >= us.totalFileSize) //done
                     {
-                        writeOnConsole("Done!");
+                        File.Move(filePath, Path.Combine(cloudName, us.currentFileName + us.fileExtension));
+                        writeOnConsole(us.username + ": Done!");
                     }
-                    lock (buffer)
+
+                    //TODO: not needed maybe...
+                    lock (us.buffer)
                     {
-                        Array.Clear(buffer, 0, buffer.Length);
+                        Array.Clear(us.buffer, 0, us.buffer.Length);
                     }
                 }
                 //TODO: new else ifs will come in the next steps.
@@ -305,14 +320,14 @@ namespace MMServer
 
             try
             {
-                current.BeginReceive(buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
+                current.BeginReceive(us.buffer, 0, BUFFER_SIZE, SocketFlags.None, ReceiveCallback, current);
             }
             catch (Exception e)
             {
                 writeOnConsole(e.Message);
-                writeOnConsole(username + " is disconnected from Server...");
+                writeOnConsole(us.username + " is disconnected from Server...");
                 current.Close();
-                clientSockets.Remove(current);
+                clientInfo.Remove(current);
                 return;
             }
 
@@ -324,7 +339,7 @@ namespace MMServer
         /// </summary>
         private void CloseAllSockets()
         {
-            foreach (Socket socket in clientSockets.Keys)
+            foreach (Socket socket in clientInfo.Keys)
             {
                 socket.Shutdown(SocketShutdown.Both);
                 socket.Disconnect(false);
@@ -366,7 +381,7 @@ namespace MMServer
             });
         }
 
-        public bool AppendAllBytes(string path, byte[] bytes, int size)
+        public void AppendAllBytes(string path, byte[] bytes, int size)
         {
             bool isFileExists = File.Exists(path);
 
@@ -378,11 +393,6 @@ namespace MMServer
                 stream.Flush();
                 stream.Close();
             }
-
-            //HACK:
-            if (size < 2048)
-                return true;
-            return false;
         }
 
         private void SendFileList(Socket current, string username)
