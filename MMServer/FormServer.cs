@@ -162,8 +162,9 @@ namespace MMServer
                 socket = serverSocket.EndAccept(AR);
                 socket.BeginReceive(bufferGlobal, 0, BUFFER_SIZE, SocketFlags.None, InitialCallback, socket);
             }
-            catch (ObjectDisposedException) // I cannot seem to avoid this (on exit when properly closing sockets)
+            catch (Exception e) // I cannot seem to avoid this (on exit when properly closing sockets)
             {
+                writeOnConsole(e.Message);
                 return;
             }
             serverSocket.BeginAccept(AcceptCallback, null);
@@ -272,10 +273,18 @@ namespace MMServer
                 {
                     string filename = text.Split(':')[1];
                     string sizeStr = text.Split(':')[2];
-                    long size = Int64.Parse(sizeStr);
+                    long size = long.Parse(sizeStr);
                     us.totalFileSize = size;
-                    us.currentFileName = filename.Substring(0, filename.LastIndexOf('.'));
-                    us.fileExtension = filename.Substring(filename.LastIndexOf('.'));
+
+                    if(!filename.Contains('.'))
+                    {
+                        us.currentFileName = filename;
+                        us.fileExtension = "";
+                    }else
+                    {
+                        us.currentFileName = filename.Substring(0, filename.LastIndexOf('.'));
+                        us.fileExtension = filename.Substring(filename.LastIndexOf('.'));
+                    }
                     us.currentFileSize = 0;
 
                     StringBuilder sb = new StringBuilder().Append("from ").Append(us.username)
@@ -377,7 +386,7 @@ namespace MMServer
         private void changeActivenessOfItems()
         {
             startServer.Enabled = !startServer.Enabled;
-            stopServer.Enabled = !stopServer.Enabled;
+            //stopServer.Enabled = !stopServer.Enabled;
             cloudPath.Enabled = !cloudPath.Enabled;
             portText.Enabled = !portText.Enabled;
             browseButton.Enabled = !browseButton.Enabled;
