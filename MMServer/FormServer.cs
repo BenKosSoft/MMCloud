@@ -386,7 +386,7 @@ namespace MMServer
         private void changeActivenessOfItems()
         {
             startServer.Enabled = !startServer.Enabled;
-            //stopServer.Enabled = !stopServer.Enabled;
+            stopServer.Enabled = !stopServer.Enabled;
             cloudPath.Enabled = !cloudPath.Enabled;
             portText.Enabled = !portText.Enabled;
             browseButton.Enabled = !browseButton.Enabled;
