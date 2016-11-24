@@ -31,6 +31,9 @@ namespace MMClient
         private StringBuilder Response;
         private byte[] responseBuffer = new byte[1024];
 
+        //background worker
+        BackgroundWorker backgroundWorker = new BackgroundWorker();
+
         public form_client()
         {
             // Define the border style of the form to a dialog box.
@@ -43,8 +46,9 @@ namespace MMClient
             StartPosition = FormStartPosition.CenterScreen;
 
             Response = new StringBuilder();
-            
+
             InitializeComponent();
+            InitializeBackgroundWorker();
         }
 
         private void form_client_Load(object sender, EventArgs e)
@@ -52,6 +56,11 @@ namespace MMClient
             this.FormClosing += this.form_client_FormClosing;
             lbl_user.Text = new StringBuilder().Append("Welcome ").Append(utility.Username).ToString();
             lbl_uploadStatus.Text = "No file chosen...";
+            lbl_uploadStatus.AutoEllipsis = true;
+
+            //initilize backgroundworker
+            backgroundWorker.WorkerSupportsCancellation = true;
+            backgroundWorker.WorkerReportsProgress = false;
 
             //Configure list view
             lv_fileList.View = View.Details;
@@ -85,22 +94,197 @@ namespace MMClient
             tt_fileListTip.SetToolTip(this.lv_fileList, "Click to see more options...");
         }
 
+        private void InitializeBackgroundWorker()
+        {
+            backgroundWorker.DoWork +=
+                new DoWorkEventHandler(BackgroundWorker_DoWork);
+            backgroundWorker.RunWorkerCompleted +=
+                new RunWorkerCompletedEventHandler(BackgroundWorker_RunWorkerCompleted);
+        }
+
+        private void BackgroundWorker_DoWork(object sender, DoWorkEventArgs e)
+        {
+            BackgroundWorker worker = sender as BackgroundWorker;
+
+            foreach (string s in filesToUpload)
+            {
+                if (worker.CancellationPending)
+                {
+                    e.Cancel = true;
+                    break;
+                }
+
+                bool retry;
+
+                do
+                {
+                    retry = false;
+                    if (File.Exists(s))
+                    {
+                        string filename = Path.GetFileName(s);
+                        this.Invoke((MethodInvoker)delegate ()
+                        {
+                            lbl_uploadStatus.Text = "Uploading " + filename + "...";
+                        });
+                        writeOnConsole("Uploading " + s);
+
+                        // Send a file to the remote device with preBuffer data.
+
+                        // Create the preBuffer data.
+                        string string1 = String.Format(Utility.BEGIN_UPLOAD + ":{0}:{1}", filename, new FileInfo(s).Length);
+
+                        //Send file s with buffers and default flags to the remote device.
+                        try
+                        {
+                            utility.SendString(string1);
+                            sendDone.Reset();
+                            utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
+                            sendDone.WaitOne();
+                            if (!Utility.IsSocketConnected(utility.ClientSocket) && !backgroundWorker.CancellationPending)
+                                throw new SocketException();
+                        }
+                        catch (SocketException)
+                        {
+                            MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            //TODO: need to cancel send file operation and clear filelist here.
+                            //UNDONE: CANCEL
+
+                            btn_logout_Click(sender, e);
+                        }
+                        catch (ObjectDisposedException)
+                        {
+                            break;
+                        }
+                    }
+                    else
+                    {
+                        writeOnConsole("Requested file could not be found: " + s);
+                        //Configure warning message.
+                        string body = new StringBuilder().Append("Specfied file ").Append(s).Append(" cannot be found!").ToString();
+                        string title = "File cannot be found";
+                        MessageBoxButtons button = MessageBoxButtons.AbortRetryIgnore;
+                        MessageBoxIcon icon = MessageBoxIcon.Exclamation;
+                        //Show message box
+                        DialogResult result = MessageBox.Show(body, title, button, icon);
+                        if (result == DialogResult.Abort)
+                        {
+                            writeOnConsole("User canceled upload.");
+                            break;
+                        }
+                        else if (result == DialogResult.Retry)
+                        {
+                            writeOnConsole("Retrying current file.");
+                            retry = true;
+                        }
+                        else if (result == DialogResult.Ignore)
+                        {
+                            writeOnConsole("User skipped current file");
+                            continue;
+                        }
+                    }
+                } while (retry);
+            }
+        }
+
+        private void BackgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
+        {
+            //Detect if there was an exception
+            if (e.Error != null)
+            {
+                writeOnConsole(e.Error.Message);
+            }
+            else if (e.Cancelled)
+            {
+                //UNDONE: CANCEL CODE
+            }
+            else
+            {
+                //UNDONE: SUCCESSGUL FINISH
+                filesToUpload.Clear();
+                writeOnConsole("Upload is finished");
+                txt_filepath.Clear();
+                this.Invoke((MethodInvoker)delegate ()
+                {
+                    lbl_uploadStatus.Text = "Upload done";
+                    btn_upload.Enabled = true;
+                });
+            }
+
+            //TODO: update labels, buttons
+        }
+
+
         private void form_client_FormClosing(object sender, FormClosingEventArgs e)
         {
             //TODO:check ongoing upload downloads
-            Application.Exit();
+            if (backgroundWorker.IsBusy && !backgroundWorker.CancellationPending && Utility.IsSocketConnected(utility.ClientSocket))
+            {
+                string body = "You have ongoing uploads. Do you really want to cancel them and exit the program?";
+                string title = "Cancel ongoing uploads";
+                MessageBoxButtons button = MessageBoxButtons.YesNo;
+                MessageBoxIcon icon = MessageBoxIcon.Exclamation;
+                //Show message box
+                DialogResult result = MessageBox.Show(body, title, button, icon);
+                if (result == DialogResult.Yes)
+                {
+                    writeOnConsole("Exiting...");
+                    backgroundWorker.CancelAsync();
+                    Application.Exit();
+                }
+                else if (result == DialogResult.No)
+                {
+                    writeOnConsole("Canceled Application exit");
+                    e.Cancel = true;
+                    return;
+                }
+            }
+
         }
 
         private void btn_logout_Click(object sender, EventArgs e)
         {
             //TODO:check ongoing upload downloads
+            if (backgroundWorker.IsBusy && Utility.IsSocketConnected(utility.ClientSocket))
+            {
+                string body = "You have ongoing uploads. Do you really want to cancel them and logout?";
+                string title = "Cancel ongoing uploads";
+                MessageBoxButtons button = MessageBoxButtons.YesNo;
+                MessageBoxIcon icon = MessageBoxIcon.Exclamation;
+                //Show message box
+                DialogResult result = MessageBox.Show(body, title, button, icon);
+                if (result == DialogResult.Yes)
+                {
+                    writeOnConsole("Logging out...");
+                    backgroundWorker.CancelAsync();
+                }
+                else if (result == DialogResult.No)
+                {
+                    writeOnConsole("Canceled logout");
+                    return;
+                }
+            }
+
             utility.DisconnectFromServer();
 
-            btn_logout.Enabled = false;
-            this.Hide();
-            form_login fl = new form_login();
-            fl.utility = new Utility();
-            fl.Show();
+            if (this.InvokeRequired)
+            {
+                this.Invoke((MethodInvoker)delegate ()
+                {
+                    this.btn_logout.Enabled = false;
+                    this.Hide();
+                    form_login fl = new form_login();
+                    fl.utility = new Utility();
+                    fl.Show();
+                });
+            }
+            else
+            {
+                btn_logout.Enabled = false;
+                this.Hide();
+                form_login fl = new form_login();
+                fl.utility = new Utility();
+                fl.Show();
+            }
         }
 
         private void lbl_refresh_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
@@ -122,7 +306,7 @@ namespace MMClient
                 ReceiveResponse();
                 receiveDone.WaitOne();
             }
-            catch(SocketException)
+            catch (SocketException)
             {
                 MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 btn_logout_Click(sender, e);
@@ -177,7 +361,7 @@ namespace MMClient
                 MessageBox.Show("File path cannot be left empty", "Empty fields!", MessageBoxButtons.OK, MessageBoxIcon.Exclamation);
                 return;
             }
-            //HACK: This won't work while sending multiple files, make it background worker. (Or will it??)
+
             btn_upload.Enabled = false;
             lbl_uploadStatus.Text = "Upload starting...";
             writeOnConsole("User started upload request");
@@ -185,79 +369,84 @@ namespace MMClient
 
             filesToUpload[0] = filesToUpload[0].Substring(1);
             filesToUpload[filesToUpload.Count - 1] = filesToUpload[filesToUpload.Count - 1].Substring(0, filesToUpload[filesToUpload.Count - 1].Length - 2);
-            
-            foreach (string s in filesToUpload)
-            {
-                bool retry;
 
-                do
-                {
-                    retry = false;
-                    if (File.Exists(s))
-                    {
-                        string filename = Path.GetFileName(s);
-                        lbl_uploadStatus.Text = "Uploading " + filename + "...";
-                        writeOnConsole("Uploading " + s);
+            backgroundWorker.RunWorkerAsync();
 
-                        // Send a file to the remote device with preBuffer data.
+            //foreach (string s in filesToUpload)
+            //{
+            //    bool retry;
 
-                        // Create the preBuffer data.
-                        string string1 = String.Format(Utility.BEGIN_UPLOAD + ":{0}:{1}", filename, new FileInfo(s).Length);
+            //    do
+            //    {
+            //        retry = false;
+            //        if (File.Exists(s))
+            //        {
+            //            string filename = Path.GetFileName(s);
+            //            lbl_uploadStatus.Text = "Uploading " + filename + "...";
+            //            writeOnConsole("Uploading " + s);
 
-                        //Send file s with buffers and default flags to the remote device.
-                        try
-                        {
-                            utility.SendString(string1);
-                            sendDone.Reset();
-                            utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
-                            sendDone.WaitOne();
-                        }
-                        catch (SocketException)
-                        {
-                            MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            //TODO: need to cancel send file operation and clear filelist here.
-                            btn_logout_Click(sender, e);
-                        }
-                    }
-                    else
-                    {
-                        writeOnConsole("Requested file could not be found: " + s);
-                        //Configure warning message.
-                        string body = new StringBuilder().Append("Specfied file ").Append(s).Append(" cannot be found!").ToString();
-                        string title = "File cannot be found";
-                        MessageBoxButtons button = MessageBoxButtons.AbortRetryIgnore;
-                        MessageBoxIcon icon = MessageBoxIcon.Exclamation;
-                        //Show message box
-                        DialogResult result = MessageBox.Show(body, title, button, icon);
-                        if (result == DialogResult.Abort)
-                        {
-                            writeOnConsole("User canceled upload.");
-                            break;
-                        }
-                        else if (result == DialogResult.Retry)
-                        {
-                            writeOnConsole("Retrying current file.");
-                            retry = true;
-                        }
-                        else if (result == DialogResult.Ignore)
-                        {
-                            writeOnConsole("User skipped current file");
-                            continue;
-                        }
-                    }
-                } while (retry);
-            }
-            filesToUpload.Clear();
-            //HACK: wrong ui update timing
-            lbl_uploadStatus.Text = "Upload done";
-            writeOnConsole("Upload is finished");
-            txt_filepath.Clear();
-            btn_upload.Enabled = true;
+            //            // Send a file to the remote device with preBuffer data.
+
+            //            // Create the preBuffer data.
+            //            string string1 = String.Format(Utility.BEGIN_UPLOAD + ":{0}:{1}", filename, new FileInfo(s).Length);
+
+            //            //Send file s with buffers and default flags to the remote device.
+            //            try
+            //            {
+            //                utility.SendString(string1);
+            //                sendDone.Reset();
+            //                utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
+            //                sendDone.WaitOne();
+            //            }
+            //            catch (SocketException)
+            //            {
+            //                MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            //                //TODO: need to cancel send file operation and clear filelist here.
+            //                btn_logout_Click(sender, e);
+            //            }
+            //            catch (ObjectDisposedException)
+            //            {
+            //                break;
+            //            }
+            //        }
+            //        else
+            //        {
+            //            writeOnConsole("Requested file could not be found: " + s);
+            //            //Configure warning message.
+            //            string body = new StringBuilder().Append("Specfied file ").Append(s).Append(" cannot be found!").ToString();
+            //            string title = "File cannot be found";
+            //            MessageBoxButtons button = MessageBoxButtons.AbortRetryIgnore;
+            //            MessageBoxIcon icon = MessageBoxIcon.Exclamation;
+            //            //Show message box
+            //            DialogResult result = MessageBox.Show(body, title, button, icon);
+            //            if (result == DialogResult.Abort)
+            //            {
+            //                writeOnConsole("User canceled upload.");
+            //                break;
+            //            }
+            //            else if (result == DialogResult.Retry)
+            //            {
+            //                writeOnConsole("Retrying current file.");
+            //                retry = true;
+            //            }
+            //            else if (result == DialogResult.Ignore)
+            //            {
+            //                writeOnConsole("User skipped current file");
+            //                continue;
+            //            }
+            //        }
+            //    } while (retry);
+            //}
+            //filesToUpload.Clear();
+            ////HACK: wrong ui update timing
+            //lbl_uploadStatus.Text = "Upload done";
+            //writeOnConsole("Upload is finished");
+            //txt_filepath.Clear();
+            //btn_upload.Enabled = true;
         }
 
         private void FileSendCallback(IAsyncResult ar)
         {
-            //TODO: writeOnConsole("File uploaded:" + );
             // Retrieve the socket from the state object.
             Socket client = (Socket)ar.AsyncState;
 
@@ -270,7 +459,9 @@ namespace MMClient
                 Thread.Sleep(2000);
             }
             catch (Exception)
-            {}
+            {
+                //UNDONE: FIX HERE
+            }
             sendDone.Set();
         }
 
@@ -310,10 +501,17 @@ namespace MMClient
         private void writeOnConsole(string text)
         {
             StringBuilder sb = new StringBuilder().Append("\n>> ").Append(text);
-            rtb_activity.Invoke((MethodInvoker)delegate
+            if (this.rtb_activity.InvokeRequired)
             {
-                rtb_activity.AppendText(sb.ToString());
-            });
+                rtb_activity.Invoke((MethodInvoker)delegate ()
+                {
+                    this.rtb_activity.AppendText(sb.ToString());
+                });
+            }
+            else
+            {
+                this.rtb_activity.AppendText(sb.ToString());
+            }
         }
     }
 }

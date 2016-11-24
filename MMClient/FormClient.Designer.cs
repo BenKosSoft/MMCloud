@@ -67,7 +67,7 @@
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(9, 263);
+            this.label1.Location = new System.Drawing.Point(5, 256);
             this.label1.Name = "label1";
             this.label1.Size = new System.Drawing.Size(114, 13);
             this.label1.TabIndex = 2;
@@ -75,14 +75,14 @@
             // 
             // txt_filepath
             // 
-            this.txt_filepath.Location = new System.Drawing.Point(12, 279);
+            this.txt_filepath.Location = new System.Drawing.Point(8, 272);
             this.txt_filepath.Name = "txt_filepath";
             this.txt_filepath.Size = new System.Drawing.Size(184, 20);
             this.txt_filepath.TabIndex = 3;
             // 
             // btn_browse
             // 
-            this.btn_browse.Location = new System.Drawing.Point(201, 277);
+            this.btn_browse.Location = new System.Drawing.Point(197, 270);
             this.btn_browse.Name = "btn_browse";
             this.btn_browse.Size = new System.Drawing.Size(75, 23);
             this.btn_browse.TabIndex = 4;
@@ -110,7 +110,7 @@
             // 
             // btn_upload
             // 
-            this.btn_upload.Location = new System.Drawing.Point(201, 306);
+            this.btn_upload.Location = new System.Drawing.Point(197, 299);
             this.btn_upload.Name = "btn_upload";
             this.btn_upload.Size = new System.Drawing.Size(75, 23);
             this.btn_upload.TabIndex = 8;
@@ -138,7 +138,8 @@
             // lbl_uploadStatus
             // 
             this.lbl_uploadStatus.AutoSize = true;
-            this.lbl_uploadStatus.Location = new System.Drawing.Point(9, 306);
+            this.lbl_uploadStatus.Location = new System.Drawing.Point(5, 299);
+            this.lbl_uploadStatus.MaximumSize = new System.Drawing.Size(190, 26);
             this.lbl_uploadStatus.Name = "lbl_uploadStatus";
             this.lbl_uploadStatus.Size = new System.Drawing.Size(74, 13);
             this.lbl_uploadStatus.TabIndex = 11;
