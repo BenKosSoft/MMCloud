@@ -189,7 +189,7 @@ namespace MMServer
 
             byte[] recBuf = new byte[received];
             Array.Copy(bufferGlobal, recBuf, received);
-            string username = Encoding.ASCII.GetString(recBuf);
+            string username = Encoding.UTF8.GetString(recBuf);
 
             bool availableUser = !clientInfo.ContainsValue(new UserState(username, null));
 
@@ -420,7 +420,7 @@ namespace MMServer
             string newPath = Path.Combine(cloudPath.Text, username, ".shared.");
             string pre = "Pre Message";
             string post = "Post Message";
-            current.SendFile(newPath, Encoding.ASCII.GetBytes(pre), Encoding.ASCII.GetBytes(post), TransmitFileOptions.UseDefaultWorkerThread);
+            current.SendFile(newPath, Encoding.UTF8.GetBytes(pre), Encoding.UTF8.GetBytes(post), TransmitFileOptions.UseDefaultWorkerThread);
             /*string[] files = File.ReadAllLines(newPath);
             foreach (string s in files)
             {
