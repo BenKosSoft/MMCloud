@@ -146,8 +146,6 @@ namespace MMClient
                         catch (SocketException)
                         {
                             MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            //TODO: need to cancel send file operation and clear filelist here.
-                            //UNDONE: CANCEL
 
                             btn_logout_Click(sender, e);
                         }
@@ -199,7 +197,6 @@ namespace MMClient
             }
             else
             {
-                //UNDONE: SUCCESSGUL FINISH
                 filesToUpload.Clear();
                 writeOnConsole("Upload is finished");
                 txt_filepath.Clear();
@@ -209,14 +206,11 @@ namespace MMClient
                     btn_upload.Enabled = true;
                 });
             }
-
-            //TODO: update labels, buttons
         }
 
 
         private void form_client_FormClosing(object sender, FormClosingEventArgs e)
         {
-            //TODO:check ongoing upload downloads
             if (backgroundWorker.IsBusy && !backgroundWorker.CancellationPending && Utility.IsSocketConnected(utility.ClientSocket))
             {
                 string body = "You have ongoing uploads. Do you really want to cancel them and exit the program?";
@@ -229,7 +223,6 @@ namespace MMClient
                 {
                     writeOnConsole("Exiting...");
                     backgroundWorker.CancelAsync();
-                    Application.Exit();
                 }
                 else if (result == DialogResult.No)
                 {
@@ -239,11 +232,11 @@ namespace MMClient
                 }
             }
 
+            Application.Exit();
         }
 
         private void btn_logout_Click(object sender, EventArgs e)
         {
-            //TODO:check ongoing upload downloads
             if (backgroundWorker.IsBusy && Utility.IsSocketConnected(utility.ClientSocket))
             {
                 string body = "You have ongoing uploads. Do you really want to cancel them and logout?";
@@ -369,80 +362,9 @@ namespace MMClient
 
             filesToUpload[0] = filesToUpload[0].Substring(1);
             filesToUpload[filesToUpload.Count - 1] = filesToUpload[filesToUpload.Count - 1].Substring(0, filesToUpload[filesToUpload.Count - 1].Length - 2);
-
+            
+            //Start Sending file asynchronusly
             backgroundWorker.RunWorkerAsync();
-
-            //foreach (string s in filesToUpload)
-            //{
-            //    bool retry;
-
-            //    do
-            //    {
-            //        retry = false;
-            //        if (File.Exists(s))
-            //        {
-            //            string filename = Path.GetFileName(s);
-            //            lbl_uploadStatus.Text = "Uploading " + filename + "...";
-            //            writeOnConsole("Uploading " + s);
-
-            //            // Send a file to the remote device with preBuffer data.
-
-            //            // Create the preBuffer data.
-            //            string string1 = String.Format(Utility.BEGIN_UPLOAD + ":{0}:{1}", filename, new FileInfo(s).Length);
-
-            //            //Send file s with buffers and default flags to the remote device.
-            //            try
-            //            {
-            //                utility.SendString(string1);
-            //                sendDone.Reset();
-            //                utility.ClientSocket.BeginSendFile(s, null, null, 0, new AsyncCallback(FileSendCallback), utility.ClientSocket);
-            //                sendDone.WaitOne();
-            //            }
-            //            catch (SocketException)
-            //            {
-            //                MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            //                //TODO: need to cancel send file operation and clear filelist here.
-            //                btn_logout_Click(sender, e);
-            //            }
-            //            catch (ObjectDisposedException)
-            //            {
-            //                break;
-            //            }
-            //        }
-            //        else
-            //        {
-            //            writeOnConsole("Requested file could not be found: " + s);
-            //            //Configure warning message.
-            //            string body = new StringBuilder().Append("Specfied file ").Append(s).Append(" cannot be found!").ToString();
-            //            string title = "File cannot be found";
-            //            MessageBoxButtons button = MessageBoxButtons.AbortRetryIgnore;
-            //            MessageBoxIcon icon = MessageBoxIcon.Exclamation;
-            //            //Show message box
-            //            DialogResult result = MessageBox.Show(body, title, button, icon);
-            //            if (result == DialogResult.Abort)
-            //            {
-            //                writeOnConsole("User canceled upload.");
-            //                break;
-            //            }
-            //            else if (result == DialogResult.Retry)
-            //            {
-            //                writeOnConsole("Retrying current file.");
-            //                retry = true;
-            //            }
-            //            else if (result == DialogResult.Ignore)
-            //            {
-            //                writeOnConsole("User skipped current file");
-            //                continue;
-            //            }
-            //        }
-            //    } while (retry);
-            //}
-            //filesToUpload.Clear();
-            ////HACK: wrong ui update timing
-            //lbl_uploadStatus.Text = "Upload done";
-            //writeOnConsole("Upload is finished");
-            //txt_filepath.Clear();
-            //btn_upload.Enabled = true;
         }
 
         private void FileSendCallback(IAsyncResult ar)
@@ -454,13 +376,11 @@ namespace MMClient
             //writeOnConsole("filesendcallback eneterd");
             try
             {
-                //UNDONE: update UI here....
                 client.EndSendFile(ar);
                 Thread.Sleep(2000);
             }
             catch (Exception)
             {
-                //UNDONE: FIX HERE
             }
             sendDone.Set();
         }

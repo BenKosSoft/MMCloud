@@ -107,7 +107,7 @@ namespace MMClient
 
             if (!Utility.IsSocketConnected(utility.ClientSocket))
             {
-                MessageBox.Show("Username is currently used in another session!", "Error!");
+                MessageBox.Show("Username is currently used in another session!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else
             {
