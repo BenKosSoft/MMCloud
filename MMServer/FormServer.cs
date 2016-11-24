@@ -164,7 +164,7 @@ namespace MMServer
             }
             catch (Exception e) // I cannot seem to avoid this (on exit when properly closing sockets)
             {
-                writeOnConsole(e.Message);
+                //writeOnConsole(e.Message);
                 return;
             }
             serverSocket.BeginAccept(AcceptCallback, null);
