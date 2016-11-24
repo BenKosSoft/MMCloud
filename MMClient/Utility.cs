@@ -95,7 +95,7 @@ namespace MMClient
         public void SendString(string text)
         {
             sendDone.Reset();
-            byte[] buffer = Encoding.ASCII.GetBytes(text);
+            byte[] buffer = Encoding.UTF8.GetBytes(text);
 
             //TODO: try catch
             try

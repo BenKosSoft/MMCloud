@@ -404,7 +404,7 @@ namespace MMClient
             if (bytesRead > 0)
             {
                 // There might be more data, so store the data received so far.
-                Response.Append(Encoding.ASCII.GetString(responseBuffer, 0, bytesRead));
+                Response.Append(Encoding.UTF8.GetString(responseBuffer, 0, bytesRead));
 
                 // Get the rest of the data.
                 client.BeginReceive(responseBuffer, 0, responseBuffer.Length, SocketFlags.None,
