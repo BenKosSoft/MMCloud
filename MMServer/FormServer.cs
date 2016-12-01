@@ -76,6 +76,12 @@ namespace MMServer
             StringBuilder sb = new StringBuilder();
             string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             path = sb.Append(path).Append(@"\MMCloud\.path").ToString();
+
+            if (!Directory.Exists(Directory.GetParent(path).ToString()))
+            {
+                Directory.CreateDirectory(Directory.GetParent(path).ToString());
+            }
+
             StreamWriter sw = File.CreateText(path);
             sw.WriteLine(cloudPath.Text.ToString());
             sw.Flush();
