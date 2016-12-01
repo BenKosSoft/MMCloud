@@ -16,34 +16,6 @@ using System.Windows.Forms;
 
 namespace MMServer
 {
-    public class UserState
-    {
-        public string username { get; set; }
-        public byte[] buffer { get; set; }
-        public string currentFileName { get; set; }
-        public string fileExtension { get; set; }
-        public long totalFileSize { get; set; }
-        public long currentFileSize { get; set; }
-
-        public override bool Equals(object obj)
-        {
-            var item = obj as UserState;
-            if (item == null) return false;
-            return username.Equals(item.username);
-        }
-
-        public override int GetHashCode()
-        {
-            return base.GetHashCode();
-        }
-
-        public UserState(string username, byte[] buffer)
-        {
-            this.username = username;
-            this.buffer = buffer;
-        }
-    }
-
     public partial class Form_Server : Form
     {
         // Thread signal.
@@ -327,7 +299,7 @@ namespace MMServer
                         writeOnConsole(sb.ToString());
                         //TODO: saveOnDisk on .shared file...
                     }
-
+                    
                     //TODO: not needed maybe...
                     lock (us.buffer)
                     {
@@ -512,6 +484,34 @@ namespace MMServer
                 File.Delete(diskPath);
                 File.Move(tempPath, diskPath);
             }
+        }
+    }
+
+    public class UserState
+    {
+        public string username { get; set; }
+        public byte[] buffer { get; set; }
+        public string currentFileName { get; set; }
+        public string fileExtension { get; set; }
+        public long totalFileSize { get; set; }
+        public long currentFileSize { get; set; }
+
+        public override bool Equals(object obj)
+        {
+            var item = obj as UserState;
+            if (item == null) return false;
+            return username.Equals(item.username);
+        }
+
+        public override int GetHashCode()
+        {
+            return base.GetHashCode();
+        }
+
+        public UserState(string username, byte[] buffer)
+        {
+            this.username = username;
+            this.buffer = buffer;
         }
     }
 }
