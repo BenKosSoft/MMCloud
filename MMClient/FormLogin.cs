@@ -91,6 +91,7 @@ namespace MMClient
                 txt_username.Clear();
                 return;
             }
+            //UNDONE: Check username lenght here
             Username = txt_username.Text;
             utility.Username = Username;
 
