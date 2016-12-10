@@ -1,17 +1,12 @@
 ﻿using MMClient;
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
-using System.Drawing;
 using System.IO;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
-using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 
 namespace MMServer
@@ -65,9 +60,10 @@ namespace MMServer
             fbd.Description = "Cloud Path";
 
             if (fbd.ShowDialog() == DialogResult.OK)
+            {
                 cloudPath.Text = fbd.SelectedPath;
-
-            writeOnConsole("Cloud path is selected");
+                writeOnConsole("Cloud path is selected");
+            }
         }
 
         private void startServer_Click(object sender, EventArgs e)
@@ -254,11 +250,11 @@ namespace MMServer
                     long size = long.Parse(sizeStr);
                     us.totalFileSize = size;
 
-                    if(!filename.Contains('.'))
+                    if (!filename.Contains('.'))
                     {
                         us.currentFileName = filename;
                         us.fileExtension = "";
-                    }else
+                    } else
                     {
                         us.currentFileName = filename.Substring(0, filename.LastIndexOf('.'));
                         us.fileExtension = filename.Substring(filename.LastIndexOf('.'));
@@ -279,11 +275,41 @@ namespace MMServer
                     SendFileList(current, us.username);
                 }
                 else if (text.IndexOf(Utility.DELETE_FILE) > -1)
-                //TODO: Delete From Disk function will be covered again...
                 {
-                    string toBeDeleted = text.Split(':')[1];
+                    string toBeDeleted = Path.Combine(cloudPath.Text, us.username, text.Split(':')[1]);
                     File.Delete(toBeDeleted);
                     DeleteFromDisk(toBeDeleted, us.username);
+                    //TODO: Should i send file list again?
+                }
+                else if (text.IndexOf(Utility.RENAME_FILE) > -1)
+                {
+                    string[] elements = text.Split(':');
+                    string oldFileName = elements[1];
+                    string newFileName = elements[2];
+                    string directoryPath = Path.Combine(cloudPath.Text, us.username);
+                    RenameFile(directoryPath, oldFileName, newFileName, us.username);
+                    //TODO: Should i send file list again?
+                }
+                //TODO: Download request from client
+                else if (text.IndexOf(Utility.BEGIN_DOWNLOAD) > -1)
+                {
+                    string[] elements = text.Split(':');
+                    string fileName = elements[1];
+                    string owner = elements[2];
+
+                    //UNDONE: Think about when someone downloads shared file, while owner is deleting that file
+                    string filePath = Path.Combine(cloudPath.Text, owner, fileName);
+                    if (File.Exists(filePath))
+                    {
+                        //UNDONE: Should server send to pre information?
+                        current.SendFile(filePath);
+                    }else //requested file is not available...
+                    {
+                        //TODO: change error message accordingly...
+                        string errorMsg = "File that you want to download is not available in the server...";
+                        byte[] buffer = Encoding.UTF8.GetBytes(errorMsg);
+                        current.Send(buffer);
+                    }
                 }
                 else
                 {
@@ -291,7 +317,7 @@ namespace MMServer
                     string cloudName = Path.Combine(cloudPath.Text, us.username);
                     string filePath = Path.Combine(cloudName, us.currentFileName + ".MMCloud");
                     AppendAllBytes(filePath, us.buffer, received);
-                    us.currentFileSize += received;               
+                    us.currentFileSize += received;
 
                     if (us.currentFileSize >= us.totalFileSize) //done
                     {
@@ -303,9 +329,9 @@ namespace MMServer
                         .Append(": File (filename=").Append(us.currentFileName).Append(us.fileExtension)
                         .Append(", size=").Append(us.totalFileSize).Append(" bytes) is uploaded...");
                         writeOnConsole(sb.ToString());
-                        //TODO: saveOnDisk on .shared file...
+                        SaveOnDisk(newPath, us.username);
                     }
-                    
+
                     //TODO: not needed maybe...
                     lock (us.buffer)
                     {
@@ -328,6 +354,31 @@ namespace MMServer
                 return;
             }
 
+        }
+
+        //TODO: test it
+        private void RenameFile(string directoryPath, string oldFileName, string newFileName, string username)
+        {
+            string oldFilePath = Path.Combine(directoryPath, oldFileName);
+            string newFilePath = Path.Combine(directoryPath, newFileName);
+            if (File.Exists(oldFilePath))
+            {
+                if (File.Exists(newFilePath))
+                {
+                    File.Delete(newFilePath);
+                }
+                File.Copy(oldFilePath, newFilePath);
+                StringBuilder sb = new StringBuilder()
+                    .Append("File ").Append(oldFileName)
+                    .Append(" is changed to ").Append(newFileName);
+                writeOnConsole(sb.ToString());
+            }
+            else
+            {
+                writeOnConsole("Failure on renaming file... File does not exist!");
+            }
+            DeleteFromDisk(oldFilePath, username);
+            SaveOnDisk(newFilePath, username);
         }
 
         /// <summary>
@@ -393,32 +444,16 @@ namespace MMServer
             }
         }
 
+        //TODO: fix this function...
         private void SendFileList(Socket current, string username)
         {
             string newPath = Path.Combine(cloudPath.Text, username, ".shared.");
-            string pre = "Pre Message";
-            string post = "Post Message";
-            current.SendFile(newPath, Encoding.UTF8.GetBytes(pre), Encoding.UTF8.GetBytes(post), TransmitFileOptions.UseDefaultWorkerThread);
-            /*string[] files = File.ReadAllLines(newPath);
-            foreach (string s in files)
-            {
-                //send filename path to the client
-                byte[] data = Encoding.ASCII.GetBytes(s);
-                try
-                {
-                    current.Send(data);
-                }
-                catch (Exception e)
-                {
-
-                }
-            }*/
+            current.SendFile(newPath);
             writeOnConsole(username + "'s files are sent to client...");
         }
 
         private void SaveOnDisk(string filePath, string username)
         {
-            filePath = Path.Combine(cloudPath.Text, username, filePath);
             if (File.Exists(filePath))
             {
                 FileInfo fileInfo = new FileInfo(filePath);
@@ -429,11 +464,10 @@ namespace MMServer
                 string fileName = fileInfo.Name;
                 if (File.Exists(diskPath))
                 {
-                    StringBuilder sb = new StringBuilder().Append(fileName).Append(':')
+                    StringBuilder sb = new StringBuilder().Append(filePath).Append(':')
                         .Append(sizeInKb).Append(" KB").Append(':').Append(date).Append(':').Append(owner).Append(':');
                     StreamWriter writer = File.AppendText(diskPath);
                     writer.WriteLine(sb.ToString());
-                    writer.WriteLine();
                     writer.Flush();
                     writer.Close();
                 }
@@ -448,76 +482,64 @@ namespace MMServer
             }
         }
 
+
+        //TODO: test it
         //Delete one line function is creating new txt, then write lines, on that txt, which will not be deleted, 
         //complexity is high. Think about it
         //[MethodImpl(MethodImplOptions.Synchronized)] 
         private void DeleteFromDisk(string toBeDeleted, string username)
         {
-            lock (syncLock) //mutex
-            {
-                string usernamePath = Path.Combine(cloudPath.Text, username);
-                string diskPath = Path.Combine(usernamePath, ".shared.");
-                string tempPath = Path.Combine(usernamePath, "temp.txt");
-                string[] allPaths = File.ReadAllLines(diskPath);
-                StreamWriter writer = File.AppendText(tempPath);
-                string[] users = { };
+            string usernamePath = Path.Combine(cloudPath.Text, username);
+            string diskPath = Path.Combine(usernamePath, ".shared.");
+            string tempPath = Path.Combine(usernamePath, "temp.txt");
+            string[] allPaths = File.ReadAllLines(diskPath);
 
-                foreach (string s in allPaths)
+            StreamWriter writer = File.AppendText(tempPath);
+
+            foreach (string s in allPaths)
+            {
+                if (!s.Equals(""))
                 {
-                    if (!s.Equals(""))
+                    string filePath = s.Split(':')[0];
+                    if (!filePath.Trim().Equals(toBeDeleted))
                     {
-                        string filePath = s.Split(':')[0];
-                        if (!filePath.Trim().Equals(toBeDeleted))
-                        {
-                            writer.WriteLine(s);
-                            writer.WriteLine();
-                            writer.Flush();
-                        }
-                        else
-                        {
-                            users = s.Split(':')[4].Split('|');
-                        }
+                        writer.WriteLine(s);
+                        writer.Flush();
                     }
                 }
-                writer.Close();
-
-                //this is wrong, it cannot be recursive...
-                foreach (string user in users)
-                {
-                    DeleteFromDisk(toBeDeleted, user);
-                }
-
-                File.Delete(diskPath);
-                File.Move(tempPath, diskPath);
             }
-        }
-    }
+            writer.Close();
 
-    public class UserState
-    {
-        public string username { get; set; }
-        public byte[] buffer { get; set; }
-        public string currentFileName { get; set; }
-        public string fileExtension { get; set; }
-        public long totalFileSize { get; set; }
-        public long currentFileSize { get; set; }
-
-        public override bool Equals(object obj)
-        {
-            var item = obj as UserState;
-            if (item == null) return false;
-            return username.Equals(item.username);
+            File.Delete(diskPath);
+            File.Move(tempPath, diskPath);
         }
 
-        public override int GetHashCode()
+        public class UserState
         {
-            return base.GetHashCode();
-        }
+            public string username { get; set; }
+            public byte[] buffer { get; set; }
+            public string currentFileName { get; set; }
+            public string fileExtension { get; set; }
+            public long totalFileSize { get; set; }
+            public long currentFileSize { get; set; }
 
-        public UserState(string username, byte[] buffer)
-        {
-            this.username = username;
-            this.buffer = buffer;
+            public override bool Equals(object obj)
+            {
+                var item = obj as UserState;
+                if (item == null) return false;
+                return username.Equals(item.username);
+            }
+
+            public override int GetHashCode()
+            {
+                return base.GetHashCode();
+            }
+
+            public UserState(string username, byte[] buffer)
+            {
+                this.username = username;
+                this.buffer = buffer;
+            }
         }
     }
 }
