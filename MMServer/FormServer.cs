@@ -287,7 +287,7 @@ namespace MMServer
                     string oldFileName = elements[1];
                     string newFileName = elements[2];
                     string directoryPath = Path.Combine(cloudPath.Text, us.username);
-                    RenameFile(directoryPath, oldFileName, newFileName, us.username);
+                    RenameFile(oldFileName, newFileName, us.username);
                     //TODO: Should i send file list again?
                 }
                 //TODO: Download request from client
@@ -357,19 +357,18 @@ namespace MMServer
         }
 
         //TODO: test it
-        private void RenameFile(string directoryPath, string oldFileName, string newFileName, string username)
+        private void RenameFile(string oldFileName, string newFileName, string username)
         {
-            string oldFilePath = Path.Combine(directoryPath, oldFileName);
-            string newFilePath = Path.Combine(directoryPath, newFileName);
+            string oldFilePath = Path.Combine(cloudPath.Text, username, oldFileName);
+            string newFilePath = Path.Combine(cloudPath.Text, username, newFileName);
             if (File.Exists(oldFilePath))
             {
                 if (File.Exists(newFilePath))
-                {
                     File.Delete(newFilePath);
-                }
-                File.Copy(oldFilePath, newFilePath);
+                File.Move(oldFilePath, newFilePath);
                 StringBuilder sb = new StringBuilder()
-                    .Append("File ").Append(oldFileName)
+                    .Append("from ").Append(username)
+                    .Append(": File ").Append(oldFileName)
                     .Append(" is changed to ").Append(newFileName);
                 writeOnConsole(sb.ToString());
             }
