@@ -29,7 +29,8 @@ namespace MMClient
 
         //for server response
         private StringBuilder Response;
-        private byte[] responseBuffer = new byte[1024];
+        private const int BUFFER_SIZE = 2097152; //2MB
+        private static readonly byte[] responseBuffer = new byte[BUFFER_SIZE];
 
         //background worker
         BackgroundWorker backgroundWorker = new BackgroundWorker();
@@ -69,6 +70,7 @@ namespace MMClient
             lv_fileList.FullRowSelect = true;
             lv_fileList.GridLines = false;
             lv_fileList.Sorting = SortOrder.Ascending;
+            lv_fileList.MultiSelect = false;
 
             //Prepare Headers for file list
             lv_fileList.Columns.Add("File Name", -2, HorizontalAlignment.Left);
@@ -91,7 +93,13 @@ namespace MMClient
             tt_fileListTip.ShowAlways = true;
 
             // Set up the ToolTip text for the File list
-            tt_fileListTip.SetToolTip(this.lv_fileList, "Click to see more options...");
+            tt_fileListTip.SetToolTip(this.lv_fileList, "Double click to see more options...");
+
+            //Start accepting connections from server
+            receiveDone.Reset();
+            utility.ClientSocket.BeginReceive(responseBuffer, 0, BUFFER_SIZE, SocketFlags.None,
+                    new AsyncCallback(ReceiveCallback), utility.ClientSocket);
+            receiveDone.WaitOne();
         }
 
         private void InitializeBackgroundWorker()
@@ -193,7 +201,15 @@ namespace MMClient
             }
             else if (e.Cancelled)
             {
-                //UNDONE: CANCEL CODE
+                //UNDONE: CANCEL CODE? when does this happen? think & test
+                filesToUpload.Clear();
+                writeOnConsole("Upload is canceled");
+                txt_filepath.Clear();
+                this.Invoke((MethodInvoker)delegate ()
+                {
+                    lbl_uploadStatus.Text = "Upload canceled";
+                    btn_upload.Enabled = true;
+                });
             }
             else
             {
@@ -294,10 +310,11 @@ namespace MMClient
                 btn_logout_Click(sender, e);
             }
 
+            //UNDONE: Change here
             try
             {
-                ReceiveResponse();
-                receiveDone.WaitOne();
+                //ReceiveResponse();
+                //receiveDone.WaitOne();
             }
             catch (SocketException)
             {
@@ -308,17 +325,48 @@ namespace MMClient
             // File list has arrived; process it.
             if (Response.Length > 1)
             {
-                string[] files = Regex.Split(Response.ToString(), "\n");
-                foreach (string s in files)
-                {
-                    string[] data = Regex.Split(s, ":");
-                    ListViewItem item = new ListViewItem(data);
-                    lv_fileList.Items.Add(item);
-                }
+                //string[] files = Regex.Split(Response.ToString(), "\n");
+                //foreach (string s in files)
+                //{
+                //    string[] data = Regex.Split(s, ":");
+                //    ListViewItem item = new ListViewItem(data);
+                //    lv_fileList.Items.Add(item);
+                //}
             }
+
+            string[] data = { "test", "21/9/1995", "57 KB", "bruce" };
+            ListViewItem item = new ListViewItem(data);
+            lv_fileList.Items.Add(item);
+            lv_fileList.Columns[1].Width = -2;
+
             Response.Clear();
             writeOnConsole("Done refreshing file list.");
             lbl_fileListStatus.Text = "Click an item for more options";
+        }
+
+        private void lv_fileList_MouseDoubleClicked(object sender, EventArgs e)
+        {
+            string filename = lv_fileList.SelectedItems[0].SubItems[0].Text;
+            string ownerName = lv_fileList.SelectedItems[0].SubItems[3].Text;
+            //UNDONE: HERE fill the btn results
+            FormFileManagement ffm = new FormFileManagement(this);
+            ffm.FileName = filename;
+            ffm.OwnerName = ownerName;
+            DialogResult result = ffm.ShowDialog(this);
+            
+            switch (result)
+            {
+                case DialogResult.OK:
+                    //TODO: download button is pressed...
+                    writeOnConsole("Downloading file: " + filename + "...");
+                    break;
+                case DialogResult.Abort:
+                    //TODO: delete button is pressed
+                    writeOnConsole("Deleting file from cloud: " + filename + "...");
+                    break;
+                default:
+                    break;
+            }
         }
 
         private void btn_browse_Click(object sender, EventArgs e)
@@ -385,40 +433,63 @@ namespace MMClient
             sendDone.Set();
         }
 
-        public void ReceiveResponse()
-        {
-            // Begin receiving the data from the remote device.
-            utility.ClientSocket.BeginReceive(responseBuffer, 0, responseBuffer.Length, SocketFlags.None,
-                    new AsyncCallback(ReceiveCallback), utility.ClientSocket);
-        }
-
+        //TODO: improve this to handle download.
         private void ReceiveCallback(IAsyncResult ar)
         {
-            //TODO: If checks to distinguish between response types
+            receiveDone.Set();
+
             // Retrieve the client socket from the asynchronous state object.
-            Socket client = (Socket)ar.AsyncState;
+            Socket current = (Socket)ar.AsyncState;
+
+            if (!Utility.IsSocketConnected(current))
+            {
+                writeOnConsole("Server is disconnected!");
+                btn_logout_Click(null, null);
+                return;
+            }
 
             // Read data from the remote device.
-            int bytesRead = client.EndReceive(ar);
+            int bytesRead;
+
+            try
+            {
+                bytesRead = current.EndReceive(ar);
+            }
+            catch (Exception e)
+            {
+                writeOnConsole(e.Message);
+                writeOnConsole("Server is disconnected!");
+                btn_logout_Click(null, null);
+                return;
+            }
 
             if (bytesRead > 0)
             {
+                //UNDONE: fill here
                 // There might be more data, so store the data received so far.
                 Response.Append(Encoding.UTF8.GetString(responseBuffer, 0, bytesRead));
 
-                // Get the rest of the data.
-                client.BeginReceive(responseBuffer, 0, responseBuffer.Length, SocketFlags.None,
-                    new AsyncCallback(ReceiveCallback), client);
+
             }
-            else
+
+            try
             {
-                //TODO: End of file recieve, any processing??
-                // Signal that all bytes have been received.
-                receiveDone.Set();
+                // Continue listening to get the rest of the data.
+                receiveDone.Reset(); //HACK: not sure about these
+                current.BeginReceive(responseBuffer, 0, BUFFER_SIZE, SocketFlags.None,
+                    new AsyncCallback(ReceiveCallback), current);
+                receiveDone.WaitOne(); //HACK: not sure about these
+            }
+            catch (Exception e)
+            {
+                writeOnConsole(e.Message);
+                writeOnConsole("Server is disconnected!");
+                btn_logout_Click(null, null);
+                return;
             }
         }
 
-        private void writeOnConsole(string text)
+        public void writeOnConsole(string text)
         {
             StringBuilder sb = new StringBuilder().Append("\n>> ").Append(text);
             if (this.rtb_activity.InvokeRequired)

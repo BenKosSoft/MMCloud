@@ -163,6 +163,7 @@
             this.lv_fileList.Size = new System.Drawing.Size(264, 159);
             this.lv_fileList.TabIndex = 13;
             this.lv_fileList.UseCompatibleStateImageBehavior = false;
+            this.lv_fileList.MouseDoubleClick += new System.Windows.Forms.MouseEventHandler(this.lv_fileList_MouseDoubleClicked);
             // 
             // form_client
             // 
