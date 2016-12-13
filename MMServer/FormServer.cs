@@ -303,6 +303,10 @@ namespace MMServer
                     if (File.Exists(filePath))
                     {
                         //UNDONE: Should server send to pre information?
+                        string message = Utility.BEGIN_DOWNLOAD + ":" + "true";
+                        byte[] buffer = Encoding.UTF8.GetBytes(message);
+                        current.Send(buffer);
+                        //Thread.Sleep(500);
                         current.SendFile(filePath);
                     }else //requested file is not available...
                     {
@@ -449,6 +453,10 @@ namespace MMServer
         private void SendFileList(Socket current, string username)
         {
             string newPath = Path.Combine(cloudPath.Text, username, ".shared.");
+            string message = Utility.BEGIN_DOWNLOAD + ":" + "false";
+            byte[] buffer = Encoding.UTF8.GetBytes(message);
+            current.Send(buffer);
+            //Thread.Sleep(500);
             current.SendFile(newPath);
             writeOnConsole(username + "'s files are sent to client...");
         }
