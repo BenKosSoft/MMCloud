@@ -186,7 +186,7 @@ namespace MMServer
                 clientInfo.Add(current, us);
                 if (Directory.Exists(Path.Combine(cloudPath.Text, username)))
                 { //if user exists return her files.
-                    SendFileList(current, username);
+                    //SendFileList(current, username);
                 }
                 else
                 { //create user directory
@@ -308,7 +308,7 @@ namespace MMServer
                     string oldFileName = elements[1];
                     string newFileName = elements[2];
                     string directoryPath = Path.Combine(cloudPath.Text, us.username);
-                    string renamedFileInfo = RenameFile(oldFileName, newFileName, us.username));
+                    string renamedFileInfo = RenameFile(oldFileName, newFileName, us.username);
                     if (!renamedFileInfo.Equals(""))
                     {
                         sb.Append(Utility.INFO).Append(":").Append(oldFileName).Append(" is changed to ").Append(newFileName);
@@ -372,7 +372,7 @@ namespace MMServer
                     }
                     else //no problem with sharing
                     {
-                        sb.Append(Utility.INFO).Append(":File: ").Append(fileName).Append(" is shared with ").Append(friend);
+                        sb.Append(Utility.INFO).Append(":File->").Append(fileName).Append(" is shared with ").Append(friend);
                         byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
 
                         //save friend .shared file
