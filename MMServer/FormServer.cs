@@ -73,6 +73,7 @@ namespace MMServer
             string path = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
             path = sb.Append(path).Append(@"\MMCloud\.path").ToString();
 
+            //cloud path is created
             if (!Directory.Exists(Directory.GetParent(path).ToString()))
             {
                 Directory.CreateDirectory(Directory.GetParent(path).ToString());
@@ -83,6 +84,7 @@ namespace MMServer
             sw.Flush();
             sw.Close();
 
+            //controls validity of inputs
             ushort port;
             if (!UInt16.TryParse(portText.Text, out port))
             {
@@ -98,6 +100,8 @@ namespace MMServer
                 portText.Clear();
                 return;
             }
+
+            //bind the socket
             serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
             writeOnConsole("Setting up server...");
@@ -164,7 +168,7 @@ namespace MMServer
             byte[] recBuf = new byte[received];
             Array.Copy(bufferGlobal, recBuf, received);
             string username = Encoding.UTF8.GetString(recBuf);
-
+            
             bool availableUser = !clientInfo.ContainsValue(new UserState(username, null));
 
             if (!availableUser)
@@ -240,7 +244,10 @@ namespace MMServer
             if (received > 0)
             {
                 byte[] recBuf = new byte[received];
-                Array.Copy(us.buffer, recBuf, received);
+                lock (us.buffer)
+                {
+                    Array.Copy(us.buffer, recBuf, received);
+                }
                 string text = Encoding.UTF8.GetString(recBuf);
 
                 if (text.IndexOf(Utility.BEGIN_UPLOAD) > -1)  //file transfer is started...
@@ -276,23 +283,49 @@ namespace MMServer
                 }
                 else if (text.IndexOf(Utility.DELETE_FILE) > -1)
                 {
-                    string toBeDeleted = Path.Combine(cloudPath.Text, us.username, text.Split(':')[1]);
-                    File.Delete(toBeDeleted);
-                    DeleteFromDisk(toBeDeleted, us.username);
+                    StringBuilder sb = new StringBuilder();
+                    string filename = text.Split(':')[1];
+                    string toBeDeleted = Path.Combine(cloudPath.Text, us.username, filename);
+                    if (File.Exists(toBeDeleted))
+                    {
+                        File.Delete(toBeDeleted);
+                        string deletedFileInfo = DeleteFromDisk(filename, us.username);
+                        sb.Append(Utility.INFO).Append(":").Append(filename).Append(" is deleted from system.");
+                        //revoke(deletedFileInfo, reason:deleted); //UNDONE:
+                    }
+                    else
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append(filename).Append(" is not available in system.");
+                    }
+                    byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                    current.Send(buffer);
                     //TODO: Should i send file list again?
                 }
                 else if (text.IndexOf(Utility.RENAME_FILE) > -1)
                 {
+                    StringBuilder sb = new StringBuilder();
                     string[] elements = text.Split(':');
                     string oldFileName = elements[1];
                     string newFileName = elements[2];
                     string directoryPath = Path.Combine(cloudPath.Text, us.username);
-                    RenameFile(directoryPath, oldFileName, newFileName, us.username);
+                    string renamedFileInfo = RenameFile(oldFileName, newFileName, us.username));
+                    if (!renamedFileInfo.Equals(""))
+                    {
+                        sb.Append(Utility.INFO).Append(":").Append(oldFileName).Append(" is changed to ").Append(newFileName);
+                        //revoke(renamedFileInfo, "reason:renamed"); //UNDONE:
+                    }
+                    else
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append(" File (").Append(oldFileName).Append(") you want to rename is not available in the system.");
+                    }
+                    byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                    current.Send(buffer);
                     //TODO: Should i send file list again?
                 }
                 //TODO: Download request from client
                 else if (text.IndexOf(Utility.BEGIN_DOWNLOAD) > -1)
                 {
+                    StringBuilder sb = new StringBuilder();
                     string[] elements = text.Split(':');
                     string fileName = elements[1];
                     string owner = elements[2];
@@ -302,34 +335,78 @@ namespace MMServer
                     if (File.Exists(filePath))
                     {
                         //UNDONE: Should server send to pre information?
+                        sb.Append(Utility.BEGIN_DOWNLOAD).Append(":true");
+                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                        current.Send(buffer);
+                        //Thread.Sleep(500);
                         current.SendFile(filePath);
                     }else //requested file is not available...
                     {
                         //TODO: change error message accordingly...
-                        string errorMsg = "File that you want to download is not available in the server...";
-                        byte[] buffer = Encoding.UTF8.GetBytes(errorMsg);
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append("File that you want to download is not available in the server...");
+                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                         current.Send(buffer);
                     }
                 }
-                else
+                //shared
+                else if(text.IndexOf(Utility.SHARE_FILE) > -1)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    string[] elements = text.Split(':');
+                    string fileName = elements[1];
+                    string friend = elements[2];
+
+                    string userPath = Path.Combine(cloudPath.Text, friend);
+                    string filePath = Path.Combine(userPath, fileName);
+                    if (!Directory.Exists(userPath))
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append("Username is not defined in the system...");
+                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                        current.Send(buffer);
+                    }
+                    else if (!File.Exists(filePath))
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append("File that you want to share is corrupted...");
+                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                        current.Send(buffer);
+                    }
+                    else //no problem with sharing
+                    {
+                        sb.Append(Utility.INFO).Append(":File: ").Append(fileName).Append(" is shared with ").Append(friend);
+                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+
+                        //save friend .shared file
+                        SaveOnDisk(fileName, us.username, friend);
+                        current.Send(buffer);
+                    }
+                }
+                else //upload
                 {
                     //get data
-                    string cloudName = Path.Combine(cloudPath.Text, us.username);
-                    string filePath = Path.Combine(cloudName, us.currentFileName + ".MMCloud");
-                    AppendAllBytes(filePath, us.buffer, received);
+                    string userCloudName = Path.Combine(cloudPath.Text, us.username);
+                    string filePath = Path.Combine(userCloudName, us.currentFileName + ".MMCloud");
+                    lock (us.buffer)
+                    {
+                        AppendAllBytes(filePath, us.buffer, received);
+                    }
                     us.currentFileSize += received;
 
                     if (us.currentFileSize >= us.totalFileSize) //done
                     {
-                        string newPath = Path.Combine(cloudName, us.currentFileName + us.fileExtension);
-                        if (File.Exists(newPath))
+                        string filename = us.currentFileName + us.fileExtension;
+                        string newPath = Path.Combine(userCloudName, filename);
+                        if (File.Exists(newPath)) //overriding...
+                        {
                             File.Delete(newPath);
+                            string deletedFileInfo = DeleteFromDisk(filename, us.username);
+                            //revoke(deletedFileInfo, "reason:override"); //UNDONE:
+                        }
                         File.Move(filePath, newPath);
                         StringBuilder sb = new StringBuilder().Append("from ").Append(us.username)
-                        .Append(": File (filename=").Append(us.currentFileName).Append(us.fileExtension)
+                        .Append(": File (filename=").Append(filename)
                         .Append(", size=").Append(us.totalFileSize).Append(" bytes) is uploaded...");
                         writeOnConsole(sb.ToString());
-                        SaveOnDisk(newPath, us.username);
+                        SaveOnDisk(filename, us.username, us.username);
                     }
 
                     //TODO: not needed maybe...
@@ -357,28 +434,32 @@ namespace MMServer
         }
 
         //TODO: test it
-        private void RenameFile(string directoryPath, string oldFileName, string newFileName, string username)
+        /*
+         * returns renamed fileinfo
+         */ 
+        private string RenameFile(string oldFileName, string newFileName, string username)
         {
-            string oldFilePath = Path.Combine(directoryPath, oldFileName);
-            string newFilePath = Path.Combine(directoryPath, newFileName);
+            string oldFilePath = Path.Combine(cloudPath.Text, username, oldFileName);
+            string newFilePath = Path.Combine(cloudPath.Text, username, newFileName);
             if (File.Exists(oldFilePath))
             {
                 if (File.Exists(newFilePath))
-                {
                     File.Delete(newFilePath);
-                }
-                File.Copy(oldFilePath, newFilePath);
+                File.Move(oldFilePath, newFilePath);
                 StringBuilder sb = new StringBuilder()
-                    .Append("File ").Append(oldFileName)
+                    .Append("from ").Append(username)
+                    .Append(": File ").Append(oldFileName)
                     .Append(" is changed to ").Append(newFileName);
                 writeOnConsole(sb.ToString());
             }
             else
             {
                 writeOnConsole("Failure on renaming file... File does not exist!");
+                return "";
             }
-            DeleteFromDisk(oldFilePath, username);
-            SaveOnDisk(newFilePath, username);
+            string deletedfileInfo = DeleteFromDisk(oldFileName, username);
+            SaveOnDisk(newFileName, username, username);
+            return deletedfileInfo;
         }
 
         /// <summary>
@@ -448,24 +529,34 @@ namespace MMServer
         private void SendFileList(Socket current, string username)
         {
             string newPath = Path.Combine(cloudPath.Text, username, ".shared.");
+            string message = Utility.BEGIN_DOWNLOAD + ":" + "false";
+            byte[] buffer = Encoding.UTF8.GetBytes(message);
+            current.Send(buffer);
+            //Thread.Sleep(500);
             current.SendFile(newPath);
             writeOnConsole(username + "'s files are sent to client...");
         }
 
-        private void SaveOnDisk(string filePath, string username)
+        /*
+         * filename is name of file
+         * owner is owner of file
+         * friend is friend of owner (owner of .shared file)
+         * if owner == friend then it is not sharing operation
+         */
+        private void SaveOnDisk(string filename, string owner, string friend)
         {
+            string userFileName = Path.Combine(owner, filename);
+            string filePath = Path.Combine(cloudPath.Text, userFileName);
             if (File.Exists(filePath))
             {
                 FileInfo fileInfo = new FileInfo(filePath);
-                long sizeInKb = fileInfo.Length / 1024;
+                long sizeInByte = fileInfo.Length;
                 string date = fileInfo.LastWriteTime.ToShortDateString();
-                string owner = username;
-                string diskPath = Path.Combine(cloudPath.Text, username, ".shared.");
-                string fileName = fileInfo.Name;
+                string diskPath = Path.Combine(cloudPath.Text, friend, ".shared.");
                 if (File.Exists(diskPath))
                 {
-                    StringBuilder sb = new StringBuilder().Append(filePath).Append(':')
-                        .Append(sizeInKb).Append(" KB").Append(':').Append(date).Append(':').Append(owner).Append(':');
+                    StringBuilder sb = new StringBuilder().Append(userFileName).Append(':')
+                        .Append(sizeInByte).Append(':').Append(date).Append(':').Append(owner).Append(':');
                     StreamWriter writer = File.AppendText(diskPath);
                     writer.WriteLine(sb.ToString());
                     writer.Flush();
@@ -487,8 +578,13 @@ namespace MMServer
         //Delete one line function is creating new txt, then write lines, on that txt, which will not be deleted, 
         //complexity is high. Think about it
         //[MethodImpl(MethodImplOptions.Synchronized)] 
-        private void DeleteFromDisk(string toBeDeleted, string username)
+        /*
+         * returns deleted file info
+         */ 
+        private string DeleteFromDisk(string toBeDeleted, string username)
         {
+            string deletedFileinfo = "";
+            string usernameFileToBeDeleted = Path.Combine(username, toBeDeleted);
             string usernamePath = Path.Combine(cloudPath.Text, username);
             string diskPath = Path.Combine(usernamePath, ".shared.");
             string tempPath = Path.Combine(usernamePath, "temp.txt");
@@ -501,10 +597,13 @@ namespace MMServer
                 if (!s.Equals(""))
                 {
                     string filePath = s.Split(':')[0];
-                    if (!filePath.Trim().Equals(toBeDeleted))
+                    if (!filePath.Trim().Equals(usernameFileToBeDeleted))
                     {
                         writer.WriteLine(s);
                         writer.Flush();
+                    }else
+                    {
+                        deletedFileinfo = s;
                     }
                 }
             }
@@ -512,7 +611,27 @@ namespace MMServer
 
             File.Delete(diskPath);
             File.Move(tempPath, diskPath);
+            return deletedFileinfo;
         }
+
+        /*
+         * Revoke file from shared
+         */
+        //UNDONE: :(
+        /*private void revokeFile(string fileinfo)
+        {
+            string[] fileinfoelements = fileinfo.Split(':');
+            string[] sharedUser = fileinfoelements[4].Split('|');
+            UserState [] users = clientInfo.Values;
+            foreach (string friend in sharedUser)
+            {
+                if (!sharedUser.Equals(""))
+                {
+                    string sharedFilePath = Path.Combine(cloudPath.Text, friend, ".shared.");
+                    
+                }
+            }
+        }*/ 
 
         public class UserState
         {
