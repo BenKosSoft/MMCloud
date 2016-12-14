@@ -86,7 +86,7 @@ namespace MMClient
             lv_fileList.Columns.Add("Owner", -2, HorizontalAlignment.Left);
 
             //CALL request file list here
-            //lbl_refresh_LinkClicked(sender, (LinkLabelLinkClickedEventArgs)e);
+            lbl_refresh_LinkClicked(sender, (LinkLabelLinkClickedEventArgs)e);
 
             //Update activity
             writeOnConsole("Server connection successful ip:port = " + utility.ServerIp + ":" + utility.Port);
@@ -317,36 +317,7 @@ namespace MMClient
                 btn_logout_Click(sender, e);
             }
 
-            //UNDONE: Change here
-            try
-            {
-                //ReceiveResponse();
-                //receiveDone.WaitOne();
-            }
-            catch (SocketException)
-            {
-                MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                btn_logout_Click(sender, e);
-            }
-
-            // File list has arrived; process it.
-            if (FileList.Length > 1)
-            {
-                //string[] files = Regex.Split(Response.ToString(), "\n");
-                //foreach (string s in files)
-                //{
-                //    string[] data = Regex.Split(s, ":");
-                //    ListViewItem item = new ListViewItem(data);
-                //    lv_fileList.Items.Add(item);
-                //}
-            }
-
-            string[] data = { "test", "21/9/1995", "57 KB", "bruce" };
-            ListViewItem item = new ListViewItem(data);
-            lv_fileList.Items.Add(item);
-            lv_fileList.Columns[1].Width = -2;
-
-            writeOnConsole("Done refreshing file list.");
+            writeOnConsole("Refreshing filelist....");
             lbl_fileListStatus.Text = "Click an item for more options";
         }
 
@@ -540,6 +511,22 @@ namespace MMClient
                 else //received data belongs to filelist
                 {
                     FileList.Append(msg);
+
+                    //HACK: what if filelist > 2MB???
+                    this.Invoke((MethodInvoker)delegate ()
+                    {
+                        string[] files = Regex.Split(FileList.ToString(), "\n");
+
+                        ListViewItem item;
+                        foreach (string s in files)
+                        {
+                            string[] data = s.Split(':'); 
+                            item = new ListViewItem(data);
+
+                            lv_fileList.Items.Add(item);
+                        }
+                    });
+                    writeOnConsole("Done refreshing filelist.");
                 }
 
                 lock (responseBuffer)
