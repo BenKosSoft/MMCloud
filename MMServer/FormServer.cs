@@ -556,7 +556,7 @@ namespace MMServer
                 if (File.Exists(diskPath))
                 {
                     StringBuilder sb = new StringBuilder().Append(userFileName).Append(':')
-                        .Append(sizeInByte).Append(':').Append(date).Append(':').Append(owner).Append(':');
+                        .Append(date).Append(':').Append(sizeInByte).Append(':').Append(owner).Append(':');
                     StreamWriter writer = File.AppendText(diskPath);
                     writer.WriteLine(sb.ToString());
                     writer.Flush();
