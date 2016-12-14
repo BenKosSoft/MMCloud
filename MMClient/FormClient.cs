@@ -86,7 +86,7 @@ namespace MMClient
             lv_fileList.Columns.Add("Owner", -2, HorizontalAlignment.Left);
 
             //CALL request file list here
-            lbl_refresh_LinkClicked(sender, (LinkLabelLinkClickedEventArgs)e);
+            lbl_refresh_LinkClicked(sender, null);
 
             //Update activity
             writeOnConsole("Server connection successful ip:port = " + utility.ServerIp + ":" + utility.Port);
@@ -307,6 +307,7 @@ namespace MMClient
         {
             writeOnConsole("User requested refreshing file list");
             lbl_fileListStatus.Text = "Refreshing file list....";
+            lv_fileList.Items.Clear();
             try
             {
                 utility.SendString(Utility.REQUEST_FILE_LIST);
@@ -349,7 +350,7 @@ namespace MMClient
                 default:
                     break;
             }
-            lbl_refresh_LinkClicked(sender, (LinkLabelLinkClickedEventArgs)e);
+            lbl_refresh_LinkClicked(sender, null);
         }
 
         private void btn_browse_Click(object sender, EventArgs e)
@@ -448,7 +449,7 @@ namespace MMClient
                 return;
             }
 
-            if (bytesRead > 0)
+            if (bytesRead >= 0)
             {
                 //UNDONE: fill here
                 byte[] recBuf = new byte[bytesRead];
@@ -520,7 +521,9 @@ namespace MMClient
                         ListViewItem item;
                         foreach (string s in files)
                         {
-                            string[] data = s.Split(':'); 
+                            string[] data = s.Split(':');
+                            data[0] = data[0].Substring(data[0].IndexOf('\\'));
+
                             item = new ListViewItem(data);
 
                             lv_fileList.Items.Add(item);
@@ -529,12 +532,12 @@ namespace MMClient
                     writeOnConsole("Done refreshing filelist.");
                 }
 
+            }
+
                 lock (responseBuffer)
                 {
                     Array.Clear(responseBuffer, 0, BUFFER_SIZE);
                 }
-            }
-
             try
             {
                 // Continue listening to get the rest of the data.
