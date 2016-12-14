@@ -28,9 +28,16 @@ namespace MMClient
             new ManualResetEvent(false);
 
         //for server response
-        private StringBuilder Response;
+        private static bool isFile; //indicates whether we are downloading the fileList or actual file
+        private static string currentFileName = Utility.UNNAMED_FILE;
+        private StringBuilder FileList;
         private const int BUFFER_SIZE = 2097152; //2MB
         private static readonly byte[] responseBuffer = new byte[BUFFER_SIZE];
+
+        //download path determined by the user
+        public string DownloadPath { get; set; }
+        private int CurrentFileSize = 0;
+        private ListViewItem CurrentFile = null;
 
         //background worker
         BackgroundWorker backgroundWorker = new BackgroundWorker();
@@ -46,7 +53,7 @@ namespace MMClient
             // Set the start position of the form to the center of the screen.
             StartPosition = FormStartPosition.CenterScreen;
 
-            Response = new StringBuilder();
+            FileList = new StringBuilder();
 
             InitializeComponent();
             InitializeBackgroundWorker();
@@ -323,7 +330,7 @@ namespace MMClient
             }
 
             // File list has arrived; process it.
-            if (Response.Length > 1)
+            if (FileList.Length > 1)
             {
                 //string[] files = Regex.Split(Response.ToString(), "\n");
                 //foreach (string s in files)
@@ -339,34 +346,39 @@ namespace MMClient
             lv_fileList.Items.Add(item);
             lv_fileList.Columns[1].Width = -2;
 
-            Response.Clear();
             writeOnConsole("Done refreshing file list.");
             lbl_fileListStatus.Text = "Click an item for more options";
         }
 
         private void lv_fileList_MouseDoubleClicked(object sender, EventArgs e)
         {
-            string filename = lv_fileList.SelectedItems[0].SubItems[0].Text;
-            string ownerName = lv_fileList.SelectedItems[0].SubItems[3].Text;
             //UNDONE: HERE fill the btn results
             FormFileManagement ffm = new FormFileManagement(this);
-            ffm.FileName = filename;
-            ffm.OwnerName = ownerName;
+            ffm.utility = utility;
+            ffm.CurrentUser = utility.Username;
+            ffm.SelectedItem = lv_fileList.SelectedItems[0];
             DialogResult result = ffm.ShowDialog(this);
-            
+
             switch (result)
             {
                 case DialogResult.OK:
                     //TODO: download button is pressed...
-                    writeOnConsole("Downloading file: " + filename + "...");
+                    writeOnConsole("Downloading file: " + lv_fileList.SelectedItems[0].SubItems[0] + "...");
+                    CurrentFile = lv_fileList.SelectedItems[0];
+                    break;
+                case DialogResult.Cancel:
+                    //TODO: delete button is pressed
+                    writeOnConsole("Deleting file from cloud: " + lv_fileList.SelectedItems[0].SubItems[0] + "...");
                     break;
                 case DialogResult.Abort:
-                    //TODO: delete button is pressed
-                    writeOnConsole("Deleting file from cloud: " + filename + "...");
+                    //Server connection cannot be established.
+                    MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    btn_logout_Click(sender, e);
                     break;
                 default:
                     break;
             }
+            lbl_refresh_LinkClicked(sender, (LinkLabelLinkClickedEventArgs)e);
         }
 
         private void btn_browse_Click(object sender, EventArgs e)
@@ -410,7 +422,7 @@ namespace MMClient
 
             filesToUpload[0] = filesToUpload[0].Substring(1);
             filesToUpload[filesToUpload.Count - 1] = filesToUpload[filesToUpload.Count - 1].Substring(0, filesToUpload[filesToUpload.Count - 1].Length - 2);
-            
+
             //Start Sending file asynchronusly
             backgroundWorker.RunWorkerAsync();
         }
@@ -444,6 +456,7 @@ namespace MMClient
             if (!Utility.IsSocketConnected(current))
             {
                 writeOnConsole("Server is disconnected!");
+                MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 btn_logout_Click(null, null);
                 return;
             }
@@ -459,6 +472,7 @@ namespace MMClient
             {
                 writeOnConsole(e.Message);
                 writeOnConsole("Server is disconnected!");
+                MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 btn_logout_Click(null, null);
                 return;
             }
@@ -466,10 +480,72 @@ namespace MMClient
             if (bytesRead > 0)
             {
                 //UNDONE: fill here
-                // There might be more data, so store the data received so far.
-                Response.Append(Encoding.UTF8.GetString(responseBuffer, 0, bytesRead));
+                byte[] recBuf = new byte[bytesRead];
+                Array.Copy(responseBuffer, recBuf, bytesRead);
+                string msg = Encoding.UTF8.GetString(recBuf);
 
+                if (msg.IndexOf(Utility.BEGIN_DOWNLOAD) != -1)
+                {
+                    string[] elements = msg.Split(':');
+                    isFile = bool.Parse(elements[1]);
+                }
+                else if (msg.IndexOf(Utility.INFO) != -1)
+                {
+                    string[] elements = msg.Split(':');
 
+                    StringBuilder consoleMsg = new StringBuilder();
+
+                    switch (elements[1])
+                    {
+                        case "ERROR":
+                            writeOnConsole(consoleMsg.Append("Server Error: ")
+                                .Append(elements[2]).ToString());
+                            MessageBox.Show(elements[2], "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            break;
+                        case "REVOKE":
+                            //UNDONE
+                            break;
+                        default:
+                            writeOnConsole(consoleMsg.Append("Server Message: ")
+                                .Append(elements[1]).ToString());
+                            MessageBox.Show(elements[1], "Server Message", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                            break;
+                    }
+                }
+                else if (isFile) //received data belongs to downloaded file
+                {
+                    string pathStr = Path.Combine(DownloadPath,
+                        currentFileName.Substring(0, currentFileName.LastIndexOf('.')) + ".MMCloud");
+                    Utility.AppendAllBytes(pathStr, recBuf, bytesRead);
+                    CurrentFileSize += bytesRead;
+
+                    if (CurrentFileSize >= int.Parse(CurrentFile.SubItems[2].Text))
+                    {
+                        string newPath = Path.Combine(DownloadPath, CurrentFile.SubItems[0].Text);
+                        if (File.Exists(newPath))
+                            File.Delete(newPath);
+
+                        File.Move(pathStr, newPath);
+                        writeOnConsole(new StringBuilder().Append("File Download Finished: Filename = ")
+                            .Append(CurrentFile.SubItems[0].Text).Append(" Size= ")
+                            .Append(CurrentFileSize).ToString());
+
+                        currentFileName = Utility.UNNAMED_FILE;
+                        DownloadPath = Utility.UNNAMED_DIR;
+                        CurrentFile = null;
+                        CurrentFileSize = 0;
+                    }
+
+                }
+                else //received data belongs to filelist
+                {
+                    FileList.Append(msg);
+                }
+
+                lock (responseBuffer)
+                {
+                    Array.Clear(responseBuffer, 0, BUFFER_SIZE);
+                }
             }
 
             try
@@ -484,6 +560,7 @@ namespace MMClient
             {
                 writeOnConsole(e.Message);
                 writeOnConsole("Server is disconnected!");
+                MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 btn_logout_Click(null, null);
                 return;
             }

@@ -44,6 +44,8 @@
             this.label3 = new System.Windows.Forms.Label();
             this.btn_share = new System.Windows.Forms.Button();
             this.lbl_status = new System.Windows.Forms.Label();
+            this.label5 = new System.Windows.Forms.Label();
+            this.lbl_fileSize = new System.Windows.Forms.Label();
             this.SuspendLayout();
             // 
             // lbl_fileName
@@ -64,7 +66,7 @@
             // 
             // btn_download
             // 
-            this.btn_download.Location = new System.Drawing.Point(194, 173);
+            this.btn_download.Location = new System.Drawing.Point(214, 173);
             this.btn_download.Name = "btn_download";
             this.btn_download.Size = new System.Drawing.Size(75, 23);
             this.btn_download.TabIndex = 2;
@@ -84,7 +86,7 @@
             // 
             // btn_delete
             // 
-            this.btn_delete.Location = new System.Drawing.Point(275, 173);
+            this.btn_delete.Location = new System.Drawing.Point(295, 173);
             this.btn_delete.Name = "btn_delete";
             this.btn_delete.Size = new System.Drawing.Size(75, 23);
             this.btn_delete.TabIndex = 4;
@@ -95,7 +97,7 @@
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(200, 9);
+            this.label2.Location = new System.Drawing.Point(196, 9);
             this.label2.Name = "label2";
             this.label2.Size = new System.Drawing.Size(73, 13);
             this.label2.TabIndex = 5;
@@ -189,11 +191,31 @@
             this.lbl_status.TabIndex = 15;
             this.lbl_status.Text = "Chose an Operation...";
             // 
+            // label5
+            // 
+            this.label5.AutoSize = true;
+            this.label5.Location = new System.Drawing.Point(224, 56);
+            this.label5.Name = "label5";
+            this.label5.Size = new System.Drawing.Size(49, 13);
+            this.label5.TabIndex = 16;
+            this.label5.Text = "File Size:";
+            // 
+            // lbl_fileSize
+            // 
+            this.lbl_fileSize.AutoSize = true;
+            this.lbl_fileSize.Location = new System.Drawing.Point(279, 56);
+            this.lbl_fileSize.Name = "lbl_fileSize";
+            this.lbl_fileSize.Size = new System.Drawing.Size(35, 13);
+            this.lbl_fileSize.TabIndex = 17;
+            this.lbl_fileSize.Text = "label6";
+            // 
             // FormFileManagement
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(362, 208);
+            this.ClientSize = new System.Drawing.Size(382, 208);
+            this.Controls.Add(this.lbl_fileSize);
+            this.Controls.Add(this.label5);
             this.Controls.Add(this.lbl_status);
             this.Controls.Add(this.btn_share);
             this.Controls.Add(this.label3);
@@ -236,5 +258,7 @@
         private System.Windows.Forms.Label label3;
         private System.Windows.Forms.Button btn_share;
         private System.Windows.Forms.Label lbl_status;
+        private System.Windows.Forms.Label label5;
+        private System.Windows.Forms.Label lbl_fileSize;
     }
 }

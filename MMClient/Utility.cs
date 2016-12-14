@@ -24,7 +24,9 @@ namespace MMClient
         public static readonly string RENAME_FILE = "_MMCloud_rename$file";
         public static readonly string DELETE_FILE = "_MMCloud_delete$file";
         public static readonly string SHARE_FILE = "_MMCloud_share$file";
-        public static readonly string ERROR = "_MMCloud_error$";
+        public static readonly string INFO = "_MMCloud_info$";
+        public static readonly string UNNAMED_FILE = "_MMCloud_unnamed:file";
+        public static readonly string UNNAMED_DIR = "_MMCloud_unnamed:directory";
 
         public Socket ClientSocket { get; set; }
         public ushort Port { get; set; }

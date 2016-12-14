@@ -103,8 +103,7 @@ namespace MMClient
                 MessageBox.Show("Server connection cannot be established!", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return;
             }
-
-
+            
             if (!Utility.IsSocketConnected(utility.ClientSocket))
             {
                 MessageBox.Show("Username is currently used in another session!", "Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
