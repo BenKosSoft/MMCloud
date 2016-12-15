@@ -104,6 +104,7 @@ namespace MMServer
             //bind the socket
             serverSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             serverSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
+            serverSocket.NoDelay = true;
             writeOnConsole("Setting up server...");
             serverSocket.Bind(new IPEndPoint(Utility.getMyIp(), port));
             if (serverSocket.IsBound)
@@ -138,6 +139,7 @@ namespace MMServer
             try
             {
                 socket = serverSocket.EndAccept(AR);
+                socket.NoDelay = true; //Disable the Nagle Algorithm for this tcp socket.
                 socket.BeginReceive(bufferGlobal, 0, BUFFER_SIZE, SocketFlags.None, InitialCallback, socket);
             }
             catch (Exception e) // I cannot seem to avoid this (on exit when properly closing sockets)
@@ -338,7 +340,7 @@ namespace MMServer
                         sb.Append(Utility.BEGIN_DOWNLOAD).Append(":true");
                         byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                         current.Send(buffer);
-                        //Thread.Sleep(500);
+                        //Thread.Sleep(50);
                         current.SendFile(filePath);
                     }else //requested file is not available...
                     {
@@ -532,7 +534,7 @@ namespace MMServer
             string message = Utility.BEGIN_DOWNLOAD + ":" + "false";
             byte[] buffer = Encoding.UTF8.GetBytes(message);
             current.Send(buffer);
-            //Thread.Sleep(500);
+            //Thread.Sleep(50);
             current.SendFile(newPath);
             writeOnConsole(username + "'s files are sent to client...");
         }
