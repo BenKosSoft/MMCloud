@@ -79,6 +79,7 @@ namespace MMClient
         {
             ClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             ClientSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
+            ClientSocket.NoDelay = true;
 
             //Connect to remote server
             ClientSocket.Connect(ServerIp, Port);

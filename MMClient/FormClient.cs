@@ -36,6 +36,7 @@ namespace MMClient
 
         //download path determined by the user
         public string DownloadPath { get; set; }
+        private int CurrentFileListSize = 0;
         private int CurrentFileSize = 0;
         private ListViewItem CurrentFile = null;
 
@@ -279,7 +280,7 @@ namespace MMClient
                     return;
                 }
             }
-
+            
             utility.DisconnectFromServer();
 
             if (this.InvokeRequired)
@@ -324,7 +325,6 @@ namespace MMClient
 
         private void lv_fileList_MouseDoubleClicked(object sender, EventArgs e)
         {
-            //UNDONE: HERE fill the btn results
             FormFileManagement ffm = new FormFileManagement(this);
             ffm.utility = utility;
             ffm.CurrentUser = utility.Username;
@@ -334,12 +334,13 @@ namespace MMClient
             switch (result)
             {
                 case DialogResult.OK:
-                    //TODO: download button is pressed...
+                    //download button is pressed...
                     writeOnConsole("Downloading file: " + lv_fileList.SelectedItems[0].SubItems[0] + "...");
                     CurrentFile = lv_fileList.SelectedItems[0];
+                    currentFileName = CurrentFile.SubItems[0].Text;
                     break;
                 case DialogResult.Cancel:
-                    //TODO: delete button is pressed
+                    //delete button is pressed
                     writeOnConsole("Deleting file from cloud: " + lv_fileList.SelectedItems[0].SubItems[0] + "...");
                     break;
                 case DialogResult.Abort:
@@ -416,8 +417,7 @@ namespace MMClient
             }
             sendDone.Set();
         }
-
-        //TODO: improve this to handle download.
+        
         private void ReceiveCallback(IAsyncResult ar)
         {
             receiveDone.Set();
@@ -427,6 +427,16 @@ namespace MMClient
 
             if (!Utility.IsSocketConnected(current))
             {
+                //HACK: dude... seriously?
+                try
+                {
+                    int av = current.Available;
+                }
+                catch (ObjectDisposedException)
+                {
+                    return;
+                }
+
                 writeOnConsole("Server is disconnected!");
                 MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 btn_logout_Click(null, null);
@@ -449,9 +459,8 @@ namespace MMClient
                 return;
             }
 
-            if (bytesRead >= 0)
+            if (bytesRead > 0)
             {
-                //UNDONE: fill here
                 byte[] recBuf = new byte[bytesRead];
                 Array.Copy(responseBuffer, recBuf, bytesRead);
                 string msg = Encoding.UTF8.GetString(recBuf);
@@ -487,13 +496,14 @@ namespace MMClient
                 else if (isFile) //received data belongs to downloaded file
                 {
                     string pathStr = Path.Combine(DownloadPath,
-                        currentFileName.Substring(0, currentFileName.LastIndexOf('.')) + ".MMCloud");
+                        currentFileName.Contains(".") ? currentFileName.Substring(0, currentFileName.LastIndexOf('.'))
+                        : currentFileName + ".MMCloud");
                     Utility.AppendAllBytes(pathStr, recBuf, bytesRead);
                     CurrentFileSize += bytesRead;
 
                     if (CurrentFileSize >= int.Parse(CurrentFile.SubItems[2].Text))
                     {
-                        string newPath = Path.Combine(DownloadPath, CurrentFile.SubItems[0].Text);
+                        string newPath = Path.Combine(DownloadPath, currentFileName);
                         if (File.Exists(newPath))
                             File.Delete(newPath);
 
@@ -512,32 +522,39 @@ namespace MMClient
                 else //received data belongs to filelist
                 {
                     FileList.Append(msg);
+                    CurrentFileListSize += bytesRead;
 
-                    //HACK: what if filelist > 2MB???
-                    this.Invoke((MethodInvoker)delegate ()
+                    if (CurrentFileListSize >= Encoding.UTF8.GetByteCount(FileList.ToString()))
                     {
-                        string[] files = Regex.Split(FileList.ToString(), "\n");
-
-                        ListViewItem item;
-                        foreach (string s in files)
+                        this.Invoke((MethodInvoker)delegate ()
                         {
-                            string[] data = s.Split(':');
-                            data[0] = data[0].Substring(data[0].IndexOf('\\'));
+                            string[] files = Regex.Split(FileList.ToString(), "\n");
 
-                            item = new ListViewItem(data);
+                            ListViewItem item;
+                            foreach (string s in files)
+                            {
+                                if (!string.IsNullOrWhiteSpace(s))
+                                {
+                                    string[] data = s.Split(':');
+                                    data[0] = data[0].Substring(data[0].IndexOf('\\') + 1);
 
-                            lv_fileList.Items.Add(item);
-                        }
-                    });
-                    writeOnConsole("Done refreshing filelist.");
+                                    item = new ListViewItem(data);
+
+                                    lv_fileList.Items.Add(item);
+                                }
+                            }
+                        });
+                        writeOnConsole("Done refreshing filelist.");
+                        CurrentFileListSize = 0;
+                    }
                 }
 
             }
 
-                lock (responseBuffer)
-                {
-                    Array.Clear(responseBuffer, 0, BUFFER_SIZE);
-                }
+            lock (responseBuffer)
+            {
+                Array.Clear(responseBuffer, 0, BUFFER_SIZE);
+            }
             try
             {
                 // Continue listening to get the rest of the data.
