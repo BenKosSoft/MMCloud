@@ -149,7 +149,7 @@ namespace MMClient
                         // Send a file to the remote device with preBuffer data.
 
                         // Create the preBuffer data.
-                        string string1 = String.Format(Utility.BEGIN_UPLOAD + ":{0}:{1}", filename, new FileInfo(s).Length);
+                        string string1 = string.Format(Utility.BEGIN_UPLOAD + ":{0}:{1}:", filename, new FileInfo(s).Length);
 
                         //Send file s with buffers and default flags to the remote device.
                         try
@@ -223,6 +223,8 @@ namespace MMClient
                 {
                     lbl_uploadStatus.Text = "Upload canceled";
                     btn_upload.Enabled = true;
+                    lv_fileList.Enabled = true;
+                    lbl_refresh.Enabled = true;
                 });
             }
             else
@@ -234,6 +236,8 @@ namespace MMClient
                 {
                     lbl_uploadStatus.Text = "Upload done";
                     btn_upload.Enabled = true;
+                    lv_fileList.Enabled = true;
+                    lbl_refresh.Enabled = true;
                 });
             }
         }
@@ -344,6 +348,9 @@ namespace MMClient
                     writeOnConsole("Downloading file: " + lv_fileList.SelectedItems[0].SubItems[0] + "...");
                     CurrentFile = lv_fileList.SelectedItems[0];
                     currentFileName = CurrentFile.SubItems[0].Text;
+                    lv_fileList.Enabled = false;
+                    lbl_refresh.Enabled = false;
+                    btn_upload.Enabled = false;
                     break;
                 case DialogResult.Cancel:
                     //delete button is pressed
@@ -396,6 +403,8 @@ namespace MMClient
             }
 
             btn_upload.Enabled = false;
+            lv_fileList.Enabled = false;
+            lbl_refresh.Enabled = false;
             lbl_uploadStatus.Text = "Upload starting...";
             writeOnConsole("User started upload request");
             filesToUpload = Regex.Split(txt_filepath.Text, "\" \"").OfType<string>().ToList();
@@ -481,20 +490,25 @@ namespace MMClient
                     else
                         TotalFileListSize = long.Parse(elements[2]);
 
-                    if (!isFile && elements[3] != "")
+                    if (!isFile && (elements[3].Length > 0 || elements.Length > 4))
                     {
-                        string s = msg.Substring(msg.IndexOf(elements[3]));
+                        string msgAfterSecond = msg.Substring(msg.IndexOf(elements[2]));
+                        string s = msgAfterSecond.Substring(msgAfterSecond.IndexOf(":") + 1);
                         FileList.Append(s);
                         CurrentFileListSize += Encoding.UTF8.GetByteCount(s);
                         showFileList();
                     }
-                    else if (isFile && elements[3] != "")
+                    else if (isFile && (elements[3].Length > 0 || elements.Length > 4))
                     {
-                        string s = msg.Substring(msg.IndexOf(elements[3]));
-                        int byteSize = Encoding.UTF8.GetByteCount(s);
-                        byte[] bytes = Encoding.UTF8.GetBytes(s);
+                        string msgAfterSecond = msg.Substring(msg.IndexOf(elements[2]));
+                        string s = msgAfterSecond.Substring(msgAfterSecond.IndexOf(":"));
 
-                        writeToFile(bytes, byteSize);
+                        int paddingLength = elements[0].Length + elements[1].Length + elements[2].Length + 3;
+                        int padding = Encoding.UTF8.GetByteCount(msg.Substring(0, paddingLength));
+
+                        byte[] bytes = new byte[bytesRead - padding];
+                        Array.Copy(recBuf, padding, bytes, 0, bytesRead - padding);
+                        writeToFile(bytes, bytes.Length);
                     }
                 }
                 else if (msg.IndexOf(Utility.INFO) != -1)
@@ -591,7 +605,8 @@ namespace MMClient
         {
             string pathStr = Path.Combine(DownloadPath,
                 currentFileName.Contains(".") ? currentFileName.Substring(0, currentFileName.LastIndexOf('.'))
-                : currentFileName + ".MMCloud");
+                : currentFileName);
+            pathStr += ".MMCloud";
 
             Utility.AppendAllBytes(pathStr, recBuf, bytesRead);
             CurrentFileSize += bytesRead;
@@ -611,6 +626,13 @@ namespace MMClient
                 DownloadPath = Utility.UNNAMED_DIR;
                 CurrentFile = null;
                 CurrentFileSize = 0;
+
+                this.Invoke((MethodInvoker)delegate ()
+               {
+                   lv_fileList.Enabled = true;
+                   lbl_refresh.Enabled = true;
+                   btn_upload.Enabled = true;
+               });
             }
         }
 

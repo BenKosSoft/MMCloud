@@ -190,7 +190,7 @@ namespace MMClient
                 //create file templete
                 string filename = SelectedItem.SubItems[0].Text;
                 File.Create(Path.Combine(txt_downloadLoc.Text,
-                   filename.Contains(".") ? filename.Substring(0, filename.LastIndexOf('.')) 
+                   filename.Contains(".") ? filename.Substring(0, filename.LastIndexOf('.')) + ".MMCloud"
                    : filename + ".MMCloud")).Close();
 
                 utility.SendString(downloadStr);
