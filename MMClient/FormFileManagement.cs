@@ -43,6 +43,9 @@ namespace MMClient
         private void FormFileManagement_Load(object sender, EventArgs e)
         {
             //TODO: Handle oversized text overflow
+            lbl_owner.AutoEllipsis = true;
+            lbl_uploadDate.AutoEllipsis = true;
+            lbl_fileSize.AutoEllipsis = true;
 
             //set labels, filename textbox and button availabilities
             txt_fileName.Text = SelectedItem.SubItems[0].Text;
@@ -71,7 +74,11 @@ namespace MMClient
 
         private void txt_fileName_TextChanged (object sender, EventArgs e)
         {
-            if (txt_fileName.Text == SelectedItem.SubItems[0].Text && btn_rename.Enabled)
+            if (string.IsNullOrWhiteSpace(txt_fileName.Text))
+            {
+                btn_rename.Enabled = false;
+            }
+            else if (txt_fileName.Text == SelectedItem.SubItems[0].Text && btn_rename.Enabled)
             {
                 btn_rename.Enabled = false;
             }
@@ -97,8 +104,9 @@ namespace MMClient
                 this.Close();
             }
             SelectedItem.SubItems[0].Text = txt_fileName.Text;
-
+            btn_rename.Enabled = false;
             txt_fileName.Enabled = true;
+            this.Close();
         }
 
         private void btn_share_Click(object sender, EventArgs e)
@@ -148,6 +156,27 @@ namespace MMClient
                 MessageBox.Show("Specified folder cannot be found!", "Directory Does Not Exist!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 txt_downloadLoc.Enabled = true;
                 return;
+            }
+            foreach (string file in Directory.GetFiles(txt_downloadLoc.Text))
+            {
+                if (Path.GetFileName(file) == SelectedItem.SubItems[0].Text)
+                {
+                    string body = file + " already exists in the specified directory. Do you want to replace it?";
+                    string title = "File already exists";
+                    MessageBoxButtons button = MessageBoxButtons.YesNo;
+                    MessageBoxIcon icon = MessageBoxIcon.Exclamation;
+                    //Show message box
+                    DialogResult result = MessageBox.Show(body, title, button, icon);
+                    if (result == DialogResult.Yes)
+                    {
+                        break;
+                    }
+                    else if (result == DialogResult.No)
+                    {
+                        txt_downloadLoc.Enabled = true;
+                        return;
+                    }
+                }
             }
 
             //set download path
