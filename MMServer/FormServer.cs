@@ -310,24 +310,35 @@ namespace MMServer
                 {
                     StringBuilder sb = new StringBuilder();
                     string[] elements = text.Split(':');
-                    string oldFileName = elements[1];
-                    string newFileName = elements[2];
+                    string oldFileName = elements[1].Trim();
+                    string newFileName = elements[2].Trim();
                     string directoryPath = Path.Combine(cloudPath.Text, us.username);
                     string renamedFileInfo = RenameFile(oldFileName, newFileName, us.username);
-                    if (!renamedFileInfo.Equals(""))
+                    if (renamedFileInfo.Equals(""))
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append(" File (").Append(oldFileName).Append(") that want to rename is not available in the system.");
+                    }
+                    else if (renamedFileInfo.Equals(" "))
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append(" File (").Append(oldFileName).Append(") that want to rename is have same name your new name, bro...");
+                    }
+                    else if(renamedFileInfo.Equals("  ")){
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append(" File (").Append(newFileName).Append(") that want to rename is already exist in the system, bro...");
+                    }
+                    else if (renamedFileInfo.Equals("   "))
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append(" File (").Append(newFileName).Append(") that want to rename is too long, bro...");
+                    }
+                    else
                     {
                         sb.Append(Utility.INFO).Append(":").Append(oldFileName).Append(" is changed to ").Append(newFileName);
                         //revoke(renamedFileInfo, "reason:renamed"); //UNDONE:
                     }
-                    else
-                    {
-                        sb.Append(Utility.INFO).Append(":ERROR:").Append(" File (").Append(oldFileName).Append(") you want to rename is not available in the system.");
-                    }
-                    byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                    string msg = sb.ToString().Trim();
+                    writeOnConsole(msg.Substring(msg.IndexOf(":")+1));
+                    byte[] buffer = Encoding.UTF8.GetBytes(msg);
                     current.Send(buffer);
-                    //TODO: Should i send file list again?
                 }
-                //TODO: Download request from client
                 else if (text.IndexOf(Utility.BEGIN_DOWNLOAD) > -1)
                 {
                     StringBuilder sb = new StringBuilder();
@@ -339,23 +350,27 @@ namespace MMServer
                     string filePath = Path.Combine(cloudPath.Text, owner, fileName);
                     if (File.Exists(filePath))
                     {
+                        writeOnConsole(us.username + " requests " + fileName + " file which belong to " + owner);
                         FileInfo fi = new FileInfo(filePath);
-                        //UNDONE: Should server send to pre information?
-                        sb.Append(Utility.BEGIN_DOWNLOAD).Append(":true").Append(":").Append(fi.Length);
+                        sb.Append(Utility.BEGIN_DOWNLOAD).Append(":true").Append(":").Append(fi.Length).Append(":");
                         byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                         try
                         {
                             SendString(current, sb.ToString());
                             current.SendFile(filePath);
-                        }catch(Exception e)
+                            //TODO: change msg
+                            writeOnConsole(us.username + " has downloaded " + fileName + " file which belong to " + owner);
+                        }
+                        catch(Exception e)
                         {
-                            writeOnConsole("File download is terminated...!");
+                            writeOnConsole("from: " + us.username + "-> File download is terminated...!");
                         }
                     }else //requested file is not available...
                     {
                         //TODO: change error message accordingly...
-                        sb.Append(Utility.INFO).Append(":ERROR:").Append("File that you want to download is not available in the server...");
-                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                        string msg = sb.Append(Utility.INFO).Append(":ERROR:").Append("File that want to download is not available in the server...").ToString().Trim();
+                        writeOnConsole(msg.Substring(msg.IndexOf(":") + 1));
+                        byte[] buffer = Encoding.UTF8.GetBytes(msg);
                         current.Send(buffer);
                     }
                 }
@@ -450,13 +465,23 @@ namespace MMServer
          */ 
         private string RenameFile(string oldFileName, string newFileName, string username)
         {
+            if (oldFileName.Equals(newFileName)) return " "; //it means old file name is equal to new file name...
             string oldFilePath = Path.Combine(cloudPath.Text, username, oldFileName);
             string newFilePath = Path.Combine(cloudPath.Text, username, newFileName);
             if (File.Exists(oldFilePath))
             {
-                if (File.Exists(newFilePath))
-                    File.Delete(newFilePath);
-                File.Move(oldFilePath, newFilePath);
+                try
+                {
+                    File.Move(oldFilePath, newFilePath);
+                }
+                catch (PathTooLongException)
+                {
+                    return "   "; // it means io exception from PathTooLongException
+                }
+                catch(IOException)
+                {
+                    return "  "; // it means io exception from MOVE
+                }
                 StringBuilder sb = new StringBuilder()
                     .Append("from ").Append(username)
                     .Append(": File ").Append(oldFileName)
@@ -546,25 +571,17 @@ namespace MMServer
             //sb.Length = BUFFER_SIZE;
             //string message = Utility.BEGIN_DOWNLOAD + ":" + "false";
 
-            long l = Encoding.UTF8.GetByteCount(sb.ToString());
+            /*long l = Encoding.UTF8.GetByteCount(sb.ToString());
             for (long i = 0; i < BUFFER_SIZE - l; i++)
             {
                 sb.Append(" ");
-            }
+            }*/
             byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString());
             try{
-                //lock (syncLock)
-                //{
-                    SendString(current, sb.ToString());
-                //}
-                //Thread.Sleep(1000);
+                SendString(current, sb.ToString());
                 sendDone.Reset();
-                //lock (syncLock)
-                //{
-                    current.BeginSendFile(newPath, null, null, 0, new AsyncCallback(FileSendCallback), current);
-                //}
+                current.BeginSendFile(newPath, null, null, 0, new AsyncCallback(FileSendCallback), current);
                 sendDone.WaitOne();
-                //current.SendFile(newPath);
             }catch(Exception e)
             {
                writeOnConsole("File send is terminated...!");
