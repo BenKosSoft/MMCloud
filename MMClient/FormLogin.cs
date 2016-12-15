@@ -45,6 +45,9 @@ namespace MMClient
             txt_username.KeyPress += Form_login_KeyPress;
             txt_ip.KeyPress += Form_login_KeyPress;
             txt_port.KeyPress += Form_login_KeyPress;
+
+            //username at most 32
+            txt_username.MaxLength = 32;
         }
 
         private void Form_login_KeyPress(object sender, KeyPressEventArgs e)

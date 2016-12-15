@@ -202,7 +202,7 @@ namespace MMClient
             }
             this.Invoke((MethodInvoker)delegate ()
            {
-            lbl_refresh_LinkClicked(sender, null);
+               lbl_refresh_LinkClicked(sender, null);
            });
         }
 
@@ -286,7 +286,7 @@ namespace MMClient
                     return;
                 }
             }
-            
+
             utility.DisconnectFromServer();
 
             if (this.InvokeRequired)
@@ -348,6 +348,7 @@ namespace MMClient
                 case DialogResult.Cancel:
                     //delete button is pressed
                     writeOnConsole("Deleting file from cloud: " + lv_fileList.SelectedItems[0].SubItems[0] + "...");
+                    lbl_refresh_LinkClicked(sender, null);
                     break;
                 case DialogResult.Abort:
                     //Server connection cannot be established.
@@ -355,9 +356,9 @@ namespace MMClient
                     btn_logout_Click(sender, e);
                     break;
                 default:
+                    lbl_refresh_LinkClicked(sender, null);
                     break;
             }
-            lbl_refresh_LinkClicked(sender, null);
         }
 
         private void btn_browse_Click(object sender, EventArgs e)
@@ -422,7 +423,7 @@ namespace MMClient
             }
             sendDone.Set();
         }
-        
+
         private void ReceiveCallback(IAsyncResult ar)
         {
             receiveDone.Set();
@@ -479,6 +480,22 @@ namespace MMClient
                         TotalFileSize = long.Parse(elements[2]);
                     else
                         TotalFileListSize = long.Parse(elements[2]);
+
+                    if (!isFile && elements[3] != "")
+                    {
+                        string s = msg.Substring(msg.IndexOf(elements[3]));
+                        FileList.Append(s);
+                        CurrentFileListSize += Encoding.UTF8.GetByteCount(s);
+                        showFileList();
+                    }
+                    else if (isFile && elements[3] != "")
+                    {
+                        string s = msg.Substring(msg.IndexOf(elements[3]));
+                        int byteSize = Encoding.UTF8.GetByteCount(s);
+                        byte[] bytes = Encoding.UTF8.GetBytes(s);
+
+                        writeToFile(bytes, byteSize);
+                    }
                 }
                 else if (msg.IndexOf(Utility.INFO) != -1)
                 {
@@ -505,63 +522,15 @@ namespace MMClient
                 }
                 else if (isFile) //received data belongs to downloaded file
                 {
-                    string pathStr = Path.Combine(DownloadPath,
-                        currentFileName.Contains(".") ? currentFileName.Substring(0, currentFileName.LastIndexOf('.'))
-                        : currentFileName + ".MMCloud");
-                    Utility.AppendAllBytes(pathStr, recBuf, bytesRead);
-                    CurrentFileSize += bytesRead;
-
-                    if (CurrentFileSize >= TotalFileSize)
-                    {
-                        string newPath = Path.Combine(DownloadPath, currentFileName);
-                        if (File.Exists(newPath))
-                            File.Delete(newPath);
-
-                        File.Move(pathStr, newPath);
-                        writeOnConsole(new StringBuilder().Append("File Download Finished: Filename = ")
-                            .Append(CurrentFile.SubItems[0].Text).Append(" Size= ")
-                            .Append(CurrentFileSize).ToString());
-
-                        currentFileName = Utility.UNNAMED_FILE;
-                        DownloadPath = Utility.UNNAMED_DIR;
-                        CurrentFile = null;
-                        CurrentFileSize = 0;
-                    }
-
+                    writeToFile(recBuf, bytesRead);
                 }
                 else //received data belongs to filelist
                 {
                     FileList.Append(msg);
                     CurrentFileListSize += bytesRead;
 
-                    if (CurrentFileListSize >= TotalFileListSize)
-                    {
-                        this.Invoke((MethodInvoker)delegate ()
-                        {
-                            string[] files = Regex.Split(FileList.ToString(), Environment.NewLine);
-
-                            ListViewItem item;
-                            foreach (string s in files)
-                            {
-                                if (!string.IsNullOrWhiteSpace(s))
-                                {
-                                    string[] data = s.Split(':');
-
-                                    if (data.Length < 2) continue;
-
-                                    data[0] = data[0].Substring(data[0].IndexOf('\\') + 1);
-
-                                    item = new ListViewItem(data);
-
-                                    lv_fileList.Items.Add(item);
-                                }
-                            }
-                        });
-                    writeOnConsole("Done refreshing filelist.");
-                    FileList.Clear();
-                    CurrentFileListSize = 0;
+                    showFileList();
                 }
-            }
 
             }
 
@@ -584,6 +553,64 @@ namespace MMClient
                 MessageBox.Show("Server connection cannot be established! Logging out....", "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 btn_logout_Click(null, null);
                 return;
+            }
+        }
+
+        private void showFileList()
+        {
+            if (CurrentFileListSize >= TotalFileListSize)
+            {
+                this.Invoke((MethodInvoker)delegate ()
+                {
+                    string[] files = Regex.Split(FileList.ToString(), Environment.NewLine);
+
+                    ListViewItem item;
+                    foreach (string s in files)
+                    {
+                        if (!string.IsNullOrWhiteSpace(s))
+                        {
+                            string[] data = s.Split(':');
+
+                            if (data.Length < 2) continue;
+
+                            data[0] = data[0].Substring(data[0].IndexOf('\\') + 1);
+
+                            item = new ListViewItem(data);
+
+                            lv_fileList.Items.Add(item);
+                        }
+                    }
+                });
+                writeOnConsole("Done refreshing filelist.");
+                FileList.Clear();
+                CurrentFileListSize = 0;
+            }
+        }
+
+        private void writeToFile (byte[] recBuf, int bytesRead)
+        {
+            string pathStr = Path.Combine(DownloadPath,
+                currentFileName.Contains(".") ? currentFileName.Substring(0, currentFileName.LastIndexOf('.'))
+                : currentFileName + ".MMCloud");
+
+            Utility.AppendAllBytes(pathStr, recBuf, bytesRead);
+            CurrentFileSize += bytesRead;
+            
+            if (CurrentFileSize >= TotalFileSize)
+            {
+                string newPath = Path.Combine(DownloadPath, currentFileName);
+                if (File.Exists(newPath))
+                    File.Delete(newPath);
+
+                File.Move(pathStr, newPath);
+                writeOnConsole(new StringBuilder().Append("File Download Finished: Filename = ")
+                    .Append(CurrentFile.SubItems[0].Text).Append(" Size= ")
+                    .Append(CurrentFileSize).ToString());
+
+                currentFileName = Utility.UNNAMED_FILE;
+                DownloadPath = Utility.UNNAMED_DIR;
+                CurrentFile = null;
+                CurrentFileSize = 0;
             }
         }
 
