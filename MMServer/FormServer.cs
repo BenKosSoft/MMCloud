@@ -16,6 +16,9 @@ namespace MMServer
         // Thread signal.
         public static ManualResetEvent allDone = new ManualResetEvent(false);
 
+        // File send signal.
+        public static ManualResetEvent sendDone = new ManualResetEvent(false);
+
         private static Socket serverSocket = null;
         private static Dictionary<Socket, UserState> clientInfo = new Dictionary<Socket, UserState>();
 
@@ -336,12 +339,18 @@ namespace MMServer
                     string filePath = Path.Combine(cloudPath.Text, owner, fileName);
                     if (File.Exists(filePath))
                     {
+                        FileInfo fi = new FileInfo(filePath);
                         //UNDONE: Should server send to pre information?
-                        sb.Append(Utility.BEGIN_DOWNLOAD).Append(":true");
+                        sb.Append(Utility.BEGIN_DOWNLOAD).Append(":true").Append(":").Append(fi.Length);
                         byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
-                        current.Send(buffer);
-                        //Thread.Sleep(50);
-                        current.SendFile(filePath);
+                        try
+                        {
+                            SendString(current, sb.ToString());
+                            current.SendFile(filePath);
+                        }catch(Exception e)
+                        {
+                            writeOnConsole("File download is terminated...!");
+                        }
                     }else //requested file is not available...
                     {
                         //TODO: change error message accordingly...
@@ -531,11 +540,30 @@ namespace MMServer
         private void SendFileList(Socket current, string username)
         {
             string newPath = Path.Combine(cloudPath.Text, username, ".shared.");
-            string message = Utility.BEGIN_DOWNLOAD + ":" + "false";
-            byte[] buffer = Encoding.UTF8.GetBytes(message);
-            current.Send(buffer);
-            //Thread.Sleep(50);
-            current.SendFile(newPath);
+            FileInfo fi = new FileInfo(newPath);
+            StringBuilder sb = new StringBuilder();
+            sb.Append(Utility.BEGIN_DOWNLOAD).Append(":false").Append(":").Append(fi.Length).Append(":");
+            //sb.Length = BUFFER_SIZE;
+            //string message = Utility.BEGIN_DOWNLOAD + ":" + "false";
+            byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString());
+            try{
+                lock (syncLock)
+                {
+                    SendString(current, sb.ToString());
+                }
+                //Thread.Sleep(1000);
+                sendDone.Reset();
+                lock (syncLock)
+                {
+                    current.BeginSendFile(newPath, null, null, 0, new AsyncCallback(FileSendCallback), current);
+                }
+                sendDone.WaitOne();
+                //current.SendFile(newPath);
+            }catch(Exception e)
+            {
+               writeOnConsole("File send is terminated...!");
+               return;
+            }
             writeOnConsole(username + "'s files are sent to client...");
         }
 
@@ -633,7 +661,58 @@ namespace MMServer
                     
                 }
             }
-        }*/ 
+        }*/
+
+        public void SendString(Socket current, string text)
+        {
+            sendDone.Reset();
+            byte[] buffer = Encoding.UTF8.GetBytes(text);
+
+            try
+            {
+                current.BeginSend(buffer, 0, buffer.Length, SocketFlags.None, new AsyncCallback(SendCallback), current);
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+            sendDone.WaitOne();
+        }
+
+        private void SendCallback(IAsyncResult ar)
+        {
+            // Retrieve the socket from the state object.
+            Socket client = (Socket)ar.AsyncState;
+
+            // Complete sending the data to the remote device.
+            try
+            {
+                int bytesSent = client.EndSend(ar);
+            }
+            catch (Exception)
+            { }
+
+            // Signal that all bytes have been sent.
+            sendDone.Set();
+        }
+
+        private void FileSendCallback(IAsyncResult ar)
+        {
+            // Retrieve the socket from the state object.
+            Socket client = (Socket)ar.AsyncState;
+
+            // Complete sending the data to the remote device.
+            //writeOnConsole("filesendcallback eneterd");
+            try
+            {
+                client.EndSendFile(ar);
+                //Thread.Sleep(2000);
+            }
+            catch (Exception)
+            {
+            }
+            sendDone.Set();
+        }
 
         public class UserState
         {
