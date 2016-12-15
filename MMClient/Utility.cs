@@ -79,7 +79,7 @@ namespace MMClient
         {
             ClientSocket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
             ClientSocket.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.DontLinger, true);
-            ClientSocket.NoDelay = true;
+            ClientSocket.NoDelay = true; //Disable Nagle's Algorithm.
 
             //Connect to remote server
             ClientSocket.Connect(ServerIp, Port);

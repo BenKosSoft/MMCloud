@@ -36,8 +36,10 @@ namespace MMClient
 
         //download path determined by the user
         public string DownloadPath { get; set; }
-        private int CurrentFileListSize = 0;
-        private int CurrentFileSize = 0;
+        private long CurrentFileListSize = 0;
+        private long TotalFileListSize = 0;
+        private long CurrentFileSize = 0;
+        private long TotalFileSize = 0;
         private ListViewItem CurrentFile = null;
 
         //background worker
@@ -198,6 +200,10 @@ namespace MMClient
                     }
                 } while (retry);
             }
+            this.Invoke((MethodInvoker)delegate ()
+           {
+            lbl_refresh_LinkClicked(sender, null);
+           });
         }
 
         private void BackgroundWorker_RunWorkerCompleted(object sender, RunWorkerCompletedEventArgs e)
@@ -406,7 +412,6 @@ namespace MMClient
             Socket client = (Socket)ar.AsyncState;
 
             // Complete sending the data to the remote device.
-            //writeOnConsole("filesendcallback eneterd");
             try
             {
                 client.EndSendFile(ar);
@@ -469,6 +474,11 @@ namespace MMClient
                 {
                     string[] elements = msg.Split(':');
                     isFile = bool.Parse(elements[1]);
+
+                    if (isFile)
+                        TotalFileSize = long.Parse(elements[2]);
+                    else
+                        TotalFileListSize = long.Parse(elements[2]);
                 }
                 else if (msg.IndexOf(Utility.INFO) != -1)
                 {
@@ -501,7 +511,7 @@ namespace MMClient
                     Utility.AppendAllBytes(pathStr, recBuf, bytesRead);
                     CurrentFileSize += bytesRead;
 
-                    if (CurrentFileSize >= int.Parse(CurrentFile.SubItems[2].Text))
+                    if (CurrentFileSize >= TotalFileSize)
                     {
                         string newPath = Path.Combine(DownloadPath, currentFileName);
                         if (File.Exists(newPath))
@@ -524,11 +534,11 @@ namespace MMClient
                     FileList.Append(msg);
                     CurrentFileListSize += bytesRead;
 
-                    if (CurrentFileListSize >= Encoding.UTF8.GetByteCount(FileList.ToString()))
+                    if (CurrentFileListSize >= TotalFileListSize)
                     {
                         this.Invoke((MethodInvoker)delegate ()
                         {
-                            string[] files = Regex.Split(FileList.ToString(), "\n");
+                            string[] files = Regex.Split(FileList.ToString(), Environment.NewLine);
 
                             ListViewItem item;
                             foreach (string s in files)
@@ -536,6 +546,9 @@ namespace MMClient
                                 if (!string.IsNullOrWhiteSpace(s))
                                 {
                                     string[] data = s.Split(':');
+
+                                    if (data.Length < 2) continue;
+
                                     data[0] = data[0].Substring(data[0].IndexOf('\\') + 1);
 
                                     item = new ListViewItem(data);
@@ -544,10 +557,11 @@ namespace MMClient
                                 }
                             }
                         });
-                        writeOnConsole("Done refreshing filelist.");
-                        CurrentFileListSize = 0;
-                    }
+                    writeOnConsole("Done refreshing filelist.");
+                    FileList.Clear();
+                    CurrentFileListSize = 0;
                 }
+            }
 
             }
 
