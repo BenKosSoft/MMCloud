@@ -545,18 +545,24 @@ namespace MMServer
             sb.Append(Utility.BEGIN_DOWNLOAD).Append(":false").Append(":").Append(fi.Length).Append(":");
             //sb.Length = BUFFER_SIZE;
             //string message = Utility.BEGIN_DOWNLOAD + ":" + "false";
+
+            long l = Encoding.UTF8.GetByteCount(sb.ToString());
+            for (long i = 0; i < BUFFER_SIZE - l; i++)
+            {
+                sb.Append(" ");
+            }
             byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString());
             try{
-                lock (syncLock)
-                {
+                //lock (syncLock)
+                //{
                     SendString(current, sb.ToString());
-                }
+                //}
                 //Thread.Sleep(1000);
                 sendDone.Reset();
-                lock (syncLock)
-                {
+                //lock (syncLock)
+                //{
                     current.BeginSendFile(newPath, null, null, 0, new AsyncCallback(FileSendCallback), current);
-                }
+                //}
                 sendDone.WaitOne();
                 //current.SendFile(newPath);
             }catch(Exception e)
