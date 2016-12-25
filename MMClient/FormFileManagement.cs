@@ -118,6 +118,8 @@ namespace MMClient
             try
             {
                 utility.SendString(shareStr);
+                txt_share.Clear();
+                txt_share.Enabled = true;
             }
             catch (SocketException)
             {
@@ -219,7 +221,7 @@ namespace MMClient
                 try
                 {
                     utility.SendString(deleteStr);
-                    this.DialogResult = DialogResult.Cancel;
+                    this.DialogResult = DialogResult.No;
                     this.Close();
                 }
                 catch (SocketException)

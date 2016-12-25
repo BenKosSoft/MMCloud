@@ -345,16 +345,16 @@ namespace MMClient
             {
                 case DialogResult.OK:
                     //download button is pressed...
-                    writeOnConsole("Downloading file: " + lv_fileList.SelectedItems[0].SubItems[0] + "...");
+                    writeOnConsole("Downloading file: " + lv_fileList.SelectedItems[0].SubItems[0].Text + "...");
                     CurrentFile = lv_fileList.SelectedItems[0];
                     currentFileName = CurrentFile.SubItems[0].Text;
                     lv_fileList.Enabled = false;
                     lbl_refresh.Enabled = false;
                     btn_upload.Enabled = false;
                     break;
-                case DialogResult.Cancel:
+                case DialogResult.No:
                     //delete button is pressed
-                    writeOnConsole("Deleting file from cloud: " + lv_fileList.SelectedItems[0].SubItems[0] + "...");
+                    writeOnConsole("Deleting file from cloud: " + lv_fileList.SelectedItems[0].SubItems[0].Text + "...");
                     lbl_refresh_LinkClicked(sender, null);
                     break;
                 case DialogResult.Abort:

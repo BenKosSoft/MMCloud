@@ -46,6 +46,8 @@ namespace MMClient
             txt_ip.KeyPress += Form_login_KeyPress;
             txt_port.KeyPress += Form_login_KeyPress;
 
+            txt_username.CharacterCasing = CharacterCasing.Lower;
+
             //username at most 32
             txt_username.MaxLength = 32;
         }
