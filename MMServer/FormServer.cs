@@ -406,7 +406,7 @@ namespace MMServer
                     }
                     else //requested file is not available...
                     {
-                        DeleteFromDisk(filename, us.username, us.username);
+                        DeleteFromDisk(filename, us.username, owner);
                         string msg = sb.Append(Utility.INFO).Append(":ERROR:").Append("File that want to download is not available in the server...").ToString().Trim();
                         writeOnConsole(msg.Substring(msg.IndexOf(":") + 1));
                         byte[] buffer = Encoding.UTF8.GetBytes(msg);
@@ -418,11 +418,11 @@ namespace MMServer
                 {
                     StringBuilder sb = new StringBuilder();
                     string[] elements = text.Split(':');
-                    string fileName = elements[1];
+                    string filename = elements[1];
                     string friend = elements[2];
 
                     string userPath = Path.Combine(cloudPath.Text, us.username);
-                    string filePath = Path.Combine(userPath, fileName);
+                    string filePath = Path.Combine(userPath, filename);
                     if (!Directory.Exists(userPath))
                     {
                         sb.Append(Utility.INFO).Append(":ERROR:").Append("Username is not defined in the system...");
@@ -438,18 +438,18 @@ namespace MMServer
                     else //next step for sharing
                     {
                         //check shared condition
-                        string[] friends = returnSharedUsers(fileName, us.username);
+                        string[] friends = returnSharedUsers(filename, us.username);
 
                         if (friends.Contains(friend)) //file is already shared...
                         {
                             //send error
-                            sb.Append(Utility.INFO).Append(":ERROR:").Append("File->").Append(fileName).Append(" is already shared with ").Append(friend);
+                            sb.Append(Utility.INFO).Append(":ERROR:").Append("File->").Append(filename).Append(" is already shared with ").Append(friend);
                             byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                             current.Send(buffer);
                         }
                         else
                         {   //share file
-                            sb.Append(Utility.INFO).Append(":File->").Append(fileName).Append(" is shared with ").Append(friend);
+                            sb.Append(Utility.INFO).Append(":File->").Append(filename).Append(" is shared with ").Append(friend);
                             byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
 
                             //create friends
@@ -458,11 +458,11 @@ namespace MMServer
                             newfriends[newfriends.Length - 1] = friend;
 
                             //rewrite own .shared file
-                            DeleteFromDisk(fileName, us.username, us.username);
-                            SaveOnDisk(fileName, us.username, us.username, newfriends);
+                            DeleteFromDisk(filename, us.username, us.username);
+                            SaveOnDisk(filename, us.username, us.username, newfriends);
 
                             //save friend .shared file
-                            SaveOnDisk(fileName, us.username, friend, new string[] { });
+                            SaveOnDisk(filename, us.username, friend, new string[] { });
                             current.Send(buffer);
                         }
                     }
