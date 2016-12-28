@@ -319,19 +319,28 @@ namespace MMServer
                     writeOnConsole(us.username + " requests " + filename + " file to be deleted!");
                     if (File.Exists(toBeDeleted))
                     {
-                        File.Delete(toBeDeleted);
-                        string deletedFileInfo = DeleteFromDisk(filename, us.username, us.username);
-                        sb.Append(Utility.INFO).Append(":").Append(filename).Append(" is deleted from system.");
-                        writeOnConsole(us.username + " deleted " + filename + " file");
-                        revokeFile(deletedFileInfo, "deleted");
+                        try
+                        {
+                            File.Delete(toBeDeleted);
+                            string deletedFileInfo = DeleteFromDisk(filename, us.username, us.username);
+                            sb.Append(Utility.INFO).Append(":").Append(filename).Append(" is deleted from system.");
+                            writeOnConsole(us.username + " deleted " + filename + " file");
+                            revokeFile(deletedFileInfo, "deleted");
+                            byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                            current.Send(buffer);
+                        }
+                        catch (Exception e)
+                        {
+                            writeOnConsole("from: " + us.username + "-> You cannot delete at the momment...!");
+                        }
                     }
                     else
                     {
                         sb.Append(Utility.INFO).Append(":ERROR:").Append(filename).Append(" is not available in system.");
                         DeleteFromDisk(filename, us.username, us.username);
+                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                        current.Send(buffer);
                     }
-                    byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
-                    current.Send(buffer);
                 }
                 else if (text.IndexOf(Utility.RENAME_FILE) > -1)
                 {
@@ -376,7 +385,7 @@ namespace MMServer
                     string filename = elements[1];
                     string owner = elements[2];
 
-                    //UNDONE: Think about when someone downloads shared file, while owner is deleting that file
+                    //UNDONE: Think about when someone downloads shared file, while owner is deleting that file, it is implemented, but it is not tested...
                     string filePath = Path.Combine(cloudPath.Text, owner, filename);
                     if (File.Exists(filePath))
                     {
@@ -408,7 +417,7 @@ namespace MMServer
                 else if (text.IndexOf(Utility.SHARE_FILE) > -1)
                 {
                     StringBuilder sb = new StringBuilder();
-                    string [] elements = text.Split(':');
+                    string[] elements = text.Split(':');
                     string fileName = elements[1];
                     string friend = elements[2];
 
@@ -429,7 +438,7 @@ namespace MMServer
                     else //next step for sharing
                     {
                         //check shared condition
-                        string [] friends = returnSharedUsers(fileName, us.username);
+                        string[] friends = returnSharedUsers(fileName, us.username);
 
                         if (friends.Contains(friend)) //file is already shared...
                         {
@@ -447,7 +456,7 @@ namespace MMServer
                             string[] newfriends = new string[friends.Length + 1];
                             friends.CopyTo(newfriends, 0);
                             newfriends[newfriends.Length - 1] = friend;
-                      
+
                             //rewrite own .shared file
                             DeleteFromDisk(fileName, us.username, us.username);
                             SaveOnDisk(fileName, us.username, us.username, newfriends);
@@ -455,6 +464,64 @@ namespace MMServer
                             //save friend .shared file
                             SaveOnDisk(fileName, us.username, friend, new string[] { });
                             current.Send(buffer);
+                        }
+                    }
+                }
+                else if (text.IndexOf(Utility.REVOKE_FILE) > -1)
+                {
+                    StringBuilder sb = new StringBuilder();
+                    string[] elements = text.Split(':');
+                    string filename = elements[1];
+                    string friend = elements[2];
+
+                    writeOnConsole("Revoke file request from client: " + us.username + ", shared user: " + friend + ", filename: " + filename);
+
+                    string userPath = Path.Combine(cloudPath.Text, us.username);
+                    string filePath = Path.Combine(userPath, filename);
+                    if (!Directory.Exists(userPath))
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append("You are not defined in the system...");
+                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                        current.Send(buffer);
+                    }
+                    else if (!File.Exists(filePath))
+                    {
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append("File that you want to revoke is corrupted...");
+                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                        current.Send(buffer);
+                    }
+                    else
+                    {// about to revoke
+
+                        //check shared condition
+                        string[] friends = returnSharedUsers(filename, us.username);
+
+                        if (!friends.Contains(friend)) //file is not shared...
+                        {
+                            //send error
+                            sb.Append(Utility.INFO).Append(":ERROR:").Append("File->").Append(filename).Append(" is not shared with ").Append(friend);
+                            byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                            current.Send(buffer);
+                        }else
+                        { //revoke file
+                            sb.Append(Utility.INFO).Append(Utility.INFO).Append(":REVOKE:").Append("File-> ").Append(filename)
+                                .Append(" is revoked by ").Append(us.username).Append(" (reason-> ")
+                                .Append("revoke").Append(")");
+
+                            //delete from friends array
+                            friends = friends.Where(val => val != friend).ToArray();
+
+                            //rewrite own .shared file
+                            DeleteFromDisk(filename, us.username, us.username);
+                            SaveOnDisk(filename, us.username, us.username, friends);
+
+                            //delete friend .shared file
+                            DeleteFromDisk(filename, friend, us.username);
+                            Socket friendSocket = usernameSocketMatch[friend];
+                            if(friendSocket != null)
+                            {
+                                SendString(friendSocket, sb.ToString().Trim());
+                            }
                         }
                     }
                 }
@@ -759,7 +826,6 @@ namespace MMServer
                     //send message to client if he is available
                     try
                     {
-                        //TODO: test it below if it is returning null value when client is not available.
                         Socket friendSocket = usernameSocketMatch[friend];
                         if(friendSocket != null)
                         {
