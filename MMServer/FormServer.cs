@@ -421,49 +421,59 @@ namespace MMServer
                     string filename = elements[1];
                     string friend = elements[2];
 
-                    string userPath = Path.Combine(cloudPath.Text, us.username);
-                    string filePath = Path.Combine(userPath, filename);
-                    if (!Directory.Exists(userPath))
+                    if (us.username.Equals(friend))
                     {
-                        sb.Append(Utility.INFO).Append(":ERROR:").Append("Username is not defined in the system...");
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append("You cannot share file with yourself...");
                         byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                         current.Send(buffer);
                     }
-                    else if (!File.Exists(filePath))
+                    else
                     {
-                        sb.Append(Utility.INFO).Append(":ERROR:").Append("File that you want to share is corrupted...");
-                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
-                        current.Send(buffer);
-                    }
-                    else //next step for sharing
-                    {
-                        //check shared condition
-                        string[] friends = returnSharedUsers(filename, us.username);
-
-                        if (friends.Contains(friend)) //file is already shared...
+                        string userPath = Path.Combine(cloudPath.Text, us.username);
+                        string friendPath = Path.Combine(cloudPath.Text, friend);
+                        string filePath = Path.Combine(userPath, filename);
+                        if (!Directory.Exists(friendPath))
                         {
-                            //send error
-                            sb.Append(Utility.INFO).Append(":ERROR:").Append("File->").Append(filename).Append(" is already shared with ").Append(friend);
+                            sb.Append(Utility.INFO).Append(":ERROR:").Append("Username is not defined in the system...");
                             byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                             current.Send(buffer);
                         }
-                        else
-                        {   //share file
-                            sb.Append(Utility.INFO).Append(":File->").Append(filename).Append(" is shared with ").Append(friend);
+                        else if (!File.Exists(filePath))
+                        {
+                            sb.Append(Utility.INFO).Append(":ERROR:").Append("File that you want to share is corrupted...");
                             byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
-
-                            //create friends
-                            string[] newfriends = new string[friends.Length + 1];
-                            friends.CopyTo(newfriends, 0);
-                            newfriends[newfriends.Length - 1] = friend;
-
-                            //rewrite own .shared file
-                            DeleteFromDisk(filename, us.username, us.username);
-                            SaveOnDisk(filename, us.username, us.username, newfriends);
-
-                            //save friend .shared file
-                            SaveOnDisk(filename, us.username, friend, new string[] { });
                             current.Send(buffer);
+                        }
+                        else //next step for sharing
+                        {
+                            //check shared condition
+                            string[] friends = returnSharedUsers(filename, us.username);
+
+                            if (friends.Contains(friend)) //file is already shared...
+                            {
+                                //send error
+                                sb.Append(Utility.INFO).Append(":ERROR:").Append("File->").Append(filename).Append(" is already shared with ").Append(friend);
+                                byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                                current.Send(buffer);
+                            }
+                            else
+                            {   //share file
+                                sb.Append(Utility.INFO).Append(":File->").Append(filename).Append(" is shared with ").Append(friend);
+                                byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+
+                                //create friends
+                                string[] newfriends = new string[friends.Length + 1];
+                                friends.CopyTo(newfriends, 0);
+                                newfriends[newfriends.Length - 1] = friend;
+
+                                //rewrite own .shared file
+                                DeleteFromDisk(filename, us.username, us.username);
+                                SaveOnDisk(filename, us.username, us.username, newfriends);
+
+                                //save friend .shared file
+                                SaveOnDisk(filename, us.username, friend, new string[] { });
+                                current.Send(buffer);
+                            }
                         }
                     }
                 }
@@ -477,10 +487,11 @@ namespace MMServer
                     writeOnConsole("Revoke file request from client: " + us.username + ", shared user: " + friend + ", filename: " + filename);
 
                     string userPath = Path.Combine(cloudPath.Text, us.username);
+                    string friendPath = Path.Combine(cloudPath.Text, friend);
                     string filePath = Path.Combine(userPath, filename);
-                    if (!Directory.Exists(userPath))
+                    if (!Directory.Exists(friendPath))
                     {
-                        sb.Append(Utility.INFO).Append(":ERROR:").Append("You are not defined in the system...");
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append("user is not defined in the system...");
                         byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                         current.Send(buffer);
                     }
