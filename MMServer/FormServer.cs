@@ -484,54 +484,63 @@ namespace MMServer
                     string filename = elements[1];
                     string friend = elements[2];
 
-                    writeOnConsole("Revoke file request from client: " + us.username + ", shared user: " + friend + ", filename: " + filename);
-
-                    string userPath = Path.Combine(cloudPath.Text, us.username);
-                    string friendPath = Path.Combine(cloudPath.Text, friend);
-                    string filePath = Path.Combine(userPath, filename);
-                    if (!Directory.Exists(friendPath))
+                    if (us.username.Equals(friend))
                     {
-                        sb.Append(Utility.INFO).Append(":ERROR:").Append("user is not defined in the system...");
+                        sb.Append(Utility.INFO).Append(":ERROR:").Append("You cannot share file with yourself...");
                         byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                         current.Send(buffer);
-                    }
-                    else if (!File.Exists(filePath))
+                    }else
                     {
-                        sb.Append(Utility.INFO).Append(":ERROR:").Append("File that you want to revoke is corrupted...");
-                        byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
-                        current.Send(buffer);
-                    }
-                    else
-                    {// about to revoke
+                        writeOnConsole("Revoke file request from client: " + us.username + ", shared user: " + friend + ", filename: " + filename);
 
-                        //check shared condition
-                        string[] friends = returnSharedUsers(filename, us.username);
-
-                        if (!friends.Contains(friend)) //file is not shared...
+                        string userPath = Path.Combine(cloudPath.Text, us.username);
+                        string friendPath = Path.Combine(cloudPath.Text, friend);
+                        string filePath = Path.Combine(userPath, filename);
+                        if (!Directory.Exists(friendPath))
                         {
-                            //send error
-                            sb.Append(Utility.INFO).Append(":ERROR:").Append("File->").Append(filename).Append(" is not shared with ").Append(friend);
+                            sb.Append(Utility.INFO).Append(":ERROR:").Append("user is not defined in the system...");
                             byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
                             current.Send(buffer);
-                        }else
-                        { //revoke file
-                            sb.Append(Utility.INFO).Append(Utility.INFO).Append(":REVOKE:").Append("File-> ").Append(filename)
-                                .Append(" is revoked by ").Append(us.username).Append(" (reason-> ")
-                                .Append("revoke").Append(")");
+                        }
+                        else if (!File.Exists(filePath))
+                        {
+                            sb.Append(Utility.INFO).Append(":ERROR:").Append("File that you want to revoke is corrupted...");
+                            byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                            current.Send(buffer);
+                        }
+                        else
+                        {// about to revoke
 
-                            //delete from friends array
-                            friends = friends.Where(val => val != friend).ToArray();
+                            //check shared condition
+                            string[] friends = returnSharedUsers(filename, us.username);
 
-                            //rewrite own .shared file
-                            DeleteFromDisk(filename, us.username, us.username);
-                            SaveOnDisk(filename, us.username, us.username, friends);
-
-                            //delete friend .shared file
-                            DeleteFromDisk(filename, friend, us.username);
-                            Socket friendSocket = usernameSocketMatch[friend];
-                            if(friendSocket != null)
+                            if (!friends.Contains(friend)) //file is not shared...
                             {
-                                SendString(friendSocket, sb.ToString().Trim());
+                                //send error
+                                sb.Append(Utility.INFO).Append(":ERROR:").Append("File->").Append(filename).Append(" is not shared with ").Append(friend);
+                                byte[] buffer = Encoding.UTF8.GetBytes(sb.ToString().Trim());
+                                current.Send(buffer);
+                            }
+                            else
+                            { //revoke file
+                                sb.Append(Utility.INFO).Append(Utility.INFO).Append(":REVOKE:").Append("File-> ").Append(filename)
+                                    .Append(" is revoked by ").Append(us.username).Append(" (reason-> ")
+                                    .Append("revoke").Append(")");
+
+                                //delete from friends array
+                                friends = friends.Where(val => val != friend).ToArray();
+
+                                //rewrite own .shared file
+                                DeleteFromDisk(filename, us.username, us.username);
+                                SaveOnDisk(filename, us.username, us.username, friends);
+
+                                //delete friend .shared file
+                                DeleteFromDisk(filename, friend, us.username);
+                                Socket friendSocket = usernameSocketMatch[friend];
+                                if (friendSocket != null)
+                                {
+                                    SendString(friendSocket, sb.ToString().Trim());
+                                }
                             }
                         }
                     }
