@@ -539,7 +539,10 @@ namespace MMClient
                             writeOnConsole(consoleMsg.Append("Revoked file acces: ")
                                 .Append(elements[2]).ToString());
                             MessageBox.Show(elements[2], "Revoked File Access!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            lbl_refresh_LinkClicked(null, null);
+                            this.Invoke((MethodInvoker)delegate ()
+                           {
+                               lbl_refresh_LinkClicked(null, null);
+                           });
                             break;
                         default:
                             writeOnConsole(consoleMsg.Append("Server Message: ")
