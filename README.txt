@@ -74,5 +74,8 @@ and needed.
 	
 [15/12/2016]: Project step 2 is completed
 	Necessery changes are done to handle download, rename, delete, file list request functionalities
+	
+[28/12/2016]: Project step 2 is completed
+	Necessery changes are done to handle file share and revoke functionalities
 ===================================================================================
 ===================================================================================
