@@ -312,6 +312,13 @@ namespace MMClient
                 fl.utility = new Utility();
                 fl.Show();
             }
+
+            FormCollection allForms = Application.OpenForms;
+            for (int i = 0; i < allForms.Count; i++)
+                allForms[i].Invoke((MethodInvoker)delegate ()
+                {
+                    allForms[i].Close();
+                });
         }
 
         private void lbl_refresh_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
@@ -362,7 +369,7 @@ namespace MMClient
                     btn_logout_Click(sender, e);
                     break;
                 default:
-                    lbl_refresh_LinkClicked(sender, null);
+                    if (this.Visible) lbl_refresh_LinkClicked(sender, null);
                     break;
             }
         }
@@ -539,7 +546,10 @@ namespace MMClient
                             writeOnConsole(consoleMsg.Append("Revoked file acces: ")
                                 .Append(elements[2]).ToString());
                             MessageBox.Show(elements[2], "Revoked File Access!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                            lbl_refresh_LinkClicked(null, null);
+                            this.Invoke((MethodInvoker)delegate ()
+                           {
+                               lbl_refresh_LinkClicked(null, null);
+                           });
                             break;
                         default:
                             writeOnConsole(consoleMsg.Append("Server Message: ")
@@ -614,7 +624,7 @@ namespace MMClient
             }
         }
 
-        private void writeToFile (byte[] recBuf, int bytesRead)
+        private void writeToFile(byte[] recBuf, int bytesRead)
         {
             string pathStr = Path.Combine(DownloadPath,
                 currentFileName.Contains(".") ? currentFileName.Substring(0, currentFileName.LastIndexOf('.'))
@@ -623,7 +633,7 @@ namespace MMClient
 
             Utility.AppendAllBytes(pathStr, recBuf, bytesRead);
             CurrentFileSize += bytesRead;
-            
+
             if (CurrentFileSize >= TotalFileSize)
             {
                 string newPath = Path.Combine(DownloadPath, currentFileName);
