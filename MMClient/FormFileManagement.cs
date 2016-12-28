@@ -63,13 +63,26 @@ namespace MMClient
             if (SelectedItem.SubItems[3].Text == utility.Username)
             {
                 this.txt_fileName.TextChanged += new System.EventHandler(this.txt_fileName_TextChanged);
+                this.txt_share.TextChanged += new System.EventHandler(this.Txt_share_TextChanged);
                 btn_delete.Enabled = true;
-                btn_share.Enabled = true;
-                btn_revoke.Enabled = false;
                 txt_share.Enabled = true;
                 txt_fileName.Enabled = true;
 
                 lbl_owner.Text += " (you)";
+            }
+        }
+
+        private void Txt_share_TextChanged(object sender, EventArgs e)
+        {
+            if (string.IsNullOrWhiteSpace(txt_share.Text))
+            {
+                btn_share.Enabled = false;
+                btn_revoke.Enabled = false;
+            }
+            else
+            {
+                btn_share.Enabled = true;
+                btn_revoke.Enabled = true;
             }
         }
 
