@@ -337,7 +337,6 @@ namespace MMClient
         {
             FormFileManagement ffm = new FormFileManagement(this);
             ffm.utility = utility;
-            ffm.CurrentUser = utility.Username;
             ffm.SelectedItem = lv_fileList.SelectedItems[0];
             DialogResult result = ffm.ShowDialog(this);
 
@@ -523,9 +522,24 @@ namespace MMClient
                             writeOnConsole(consoleMsg.Append("Server Error: ")
                                 .Append(elements[2]).ToString());
                             MessageBox.Show(elements[2], "Server Error!", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                            //HACK: currently every error unlocks filelist (only download error should)
+                            //TODO: need to introduce error codes for intelligent detection 
+
+                            //if download fails...
+                            this.Invoke((MethodInvoker)delegate ()
+                            {
+                                lv_fileList.Enabled = true;
+                                lbl_refresh.Enabled = true;
+                                btn_upload.Enabled = true;
+                            });
+                            //UNDONE: need to remove .mmcloud file here
+                            //end if
                             break;
                         case "REVOKE":
-                            //UNDONE
+                            writeOnConsole(consoleMsg.Append("Revoked file acces: ")
+                                .Append(elements[2]).ToString());
+                            MessageBox.Show(elements[2], "Revoked File Access!", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                            lbl_refresh_LinkClicked(null, null);
                             break;
                         default:
                             writeOnConsole(consoleMsg.Append("Server Message: ")
@@ -545,7 +559,6 @@ namespace MMClient
 
                     showFileList();
                 }
-
             }
 
             lock (responseBuffer)

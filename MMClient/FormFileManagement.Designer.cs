@@ -46,6 +46,7 @@
             this.lbl_status = new System.Windows.Forms.Label();
             this.label5 = new System.Windows.Forms.Label();
             this.lbl_fileSize = new System.Windows.Forms.Label();
+            this.btn_revoke = new System.Windows.Forms.Button();
             this.SuspendLayout();
             // 
             // lbl_fileName
@@ -209,11 +210,22 @@
             this.lbl_fileSize.TabIndex = 17;
             this.lbl_fileSize.Text = "label6";
             // 
+            // btn_revoke
+            // 
+            this.btn_revoke.Location = new System.Drawing.Point(281, 83);
+            this.btn_revoke.Name = "btn_revoke";
+            this.btn_revoke.Size = new System.Drawing.Size(75, 23);
+            this.btn_revoke.TabIndex = 18;
+            this.btn_revoke.Text = "Revoke";
+            this.btn_revoke.UseVisualStyleBackColor = true;
+            this.btn_revoke.Click += new System.EventHandler(this.btn_revoke_Click);
+            // 
             // FormFileManagement
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(382, 208);
+            this.Controls.Add(this.btn_revoke);
             this.Controls.Add(this.lbl_fileSize);
             this.Controls.Add(this.label5);
             this.Controls.Add(this.lbl_status);
@@ -260,5 +272,6 @@
         private System.Windows.Forms.Label lbl_status;
         private System.Windows.Forms.Label label5;
         private System.Windows.Forms.Label lbl_fileSize;
+        private System.Windows.Forms.Button btn_revoke;
     }
 }

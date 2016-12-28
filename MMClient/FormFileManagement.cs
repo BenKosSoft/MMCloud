@@ -20,7 +20,6 @@ namespace MMClient
     {
         private static new form_client ParentForm;
         public Utility utility { get; set; }
-        public string CurrentUser { get; set; }
         public ListViewItem SelectedItem { get; set; }
 
         public FormFileManagement(form_client parent)
@@ -56,6 +55,7 @@ namespace MMClient
             btn_rename.Enabled = false;
             btn_delete.Enabled = false;
             btn_share.Enabled = false;
+            btn_revoke.Enabled = false;
             txt_share.Enabled = false;
             txt_fileName.Enabled = false;
 
@@ -65,6 +65,7 @@ namespace MMClient
                 this.txt_fileName.TextChanged += new System.EventHandler(this.txt_fileName_TextChanged);
                 btn_delete.Enabled = true;
                 btn_share.Enabled = true;
+                btn_revoke.Enabled = false;
                 txt_share.Enabled = true;
                 txt_fileName.Enabled = true;
 
@@ -118,6 +119,25 @@ namespace MMClient
             try
             {
                 utility.SendString(shareStr);
+                txt_share.Clear();
+                txt_share.Enabled = true;
+            }
+            catch (SocketException)
+            {
+                this.DialogResult = DialogResult.Abort;
+                this.Close();
+            }
+        }
+
+        private void btn_revoke_Click(object sender, EventArgs e)
+        {
+            txt_share.Enabled = false;
+
+            //format = revokeKey:FileName:RevokedUser
+            string revokeStr = string.Format(Utility.REVOKE_FILE + ":{0}:{1}", SelectedItem.SubItems[0].Text, txt_share.Text);
+            try
+            {
+                utility.SendString(revokeStr);
                 txt_share.Clear();
                 txt_share.Enabled = true;
             }
