@@ -473,13 +473,14 @@ namespace MMServer
                                 //save friend .shared file
                                 SaveOnDisk(filename, us.username, friend, new string[] { });
                                 current.Send(buffer);
-                                Socket friendSocket = usernameSocketMatch[friend];
                                 StringBuilder sb1 = new StringBuilder().Append(Utility.INFO).
                                     Append(":File->").Append(filename).Append(" is shared with you by ").Append(us.username);
-                                if (friendSocket != null)
+                                Socket friendSocket;
+                                if (usernameSocketMatch.TryGetValue(friend, out friendSocket))
                                 {
                                     SendString(friendSocket, sb1.ToString().Trim());
                                 }
+                                writeOnConsole(sb.ToString().Trim());
                             }
                         }
                     }
@@ -543,8 +544,8 @@ namespace MMServer
 
                                 //delete friend .shared file
                                 DeleteFromDisk(filename, friend, us.username);
-                                Socket friendSocket = usernameSocketMatch[friend];
-                                if (friendSocket != null)
+                                Socket friendSocket;
+                                if (usernameSocketMatch.TryGetValue(friend, out friendSocket))
                                 {
                                     SendString(friendSocket, sb.ToString().Trim());
                                 }
@@ -853,8 +854,8 @@ namespace MMServer
                     //send message to client if he is available
                     try
                     {
-                        Socket friendSocket = usernameSocketMatch[friend];
-                        if(friendSocket != null)
+                        Socket friendSocket;
+                        if (usernameSocketMatch.TryGetValue(friend, out friendSocket))
                         {
                             StringBuilder sb = new StringBuilder().Append(Utility.INFO).Append(":REVOKE:").Append("File-> ").Append(filename)
                                 .Append(" is revoked by ").Append(owner).Append(" (reason-> ")
