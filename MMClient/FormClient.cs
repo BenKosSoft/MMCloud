@@ -313,13 +313,14 @@ namespace MMClient
                 fl.utility = new Utility();
                 fl.Show();
             }
-
-            FormCollection allForms = Application.OpenForms;
-            for (int i = 0; i < allForms.Count; i++)
-                allForms[i].Invoke((MethodInvoker)delegate ()
+            
+            foreach (Form f in this.OwnedForms)
+            {
+                f.Invoke((MethodInvoker)delegate ()
                 {
-                    allForms[i].Close();
+                     f.Close();
                 });
+            }
         }
 
         private void lbl_refresh_LinkClicked(object sender, LinkLabelLinkClickedEventArgs e)
