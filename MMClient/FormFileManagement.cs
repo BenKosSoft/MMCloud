@@ -216,18 +216,19 @@ namespace MMClient
 
             //set download path
             ParentForm.DownloadPath = txt_downloadLoc.Text;
+            ParentForm.CurrentFileName = SelectedItem.SubItems[0].Text;
+
+            //create file templete
+            string filename = SelectedItem.SubItems[0].Text;
+            File.Create(Path.Combine(txt_downloadLoc.Text,
+               filename.Contains(".") ? filename.Substring(0, filename.LastIndexOf('.')) + ".MMCloud"
+               : filename + ".MMCloud")).Close();
 
             //format = downloadKey:filename:owner
             string downloadStr = string.Format(Utility.BEGIN_DOWNLOAD + ":{0}:{1}", SelectedItem.SubItems[0].Text,
                 SelectedItem.SubItems[3].Text);
             try
             {
-                //create file templete
-                string filename = SelectedItem.SubItems[0].Text;
-                File.Create(Path.Combine(txt_downloadLoc.Text,
-                   filename.Contains(".") ? filename.Substring(0, filename.LastIndexOf('.')) + ".MMCloud"
-                   : filename + ".MMCloud")).Close();
-
                 utility.SendString(downloadStr);
                 this.DialogResult = DialogResult.OK;
                 this.Close();
