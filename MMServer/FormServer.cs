@@ -473,6 +473,13 @@ namespace MMServer
                                 //save friend .shared file
                                 SaveOnDisk(filename, us.username, friend, new string[] { });
                                 current.Send(buffer);
+                                Socket friendSocket = usernameSocketMatch[friend];
+                                StringBuilder sb1 = new StringBuilder().Append(Utility.INFO).
+                                    Append(":File->").Append(filename).Append(" is shared with you by ").Append(us.username);
+                                if (friendSocket != null)
+                                {
+                                    SendString(friendSocket, sb1.ToString().Trim());
+                                }
                             }
                         }
                     }
