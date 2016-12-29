@@ -555,6 +555,10 @@ namespace MMClient
                             writeOnConsole(consoleMsg.Append("Server Message: ")
                                 .Append(elements[1]).ToString());
                             MessageBox.Show(elements[1], "Server Message", MessageBoxButtons.OK, MessageBoxIcon.Asterisk);
+                            this.Invoke((MethodInvoker)delegate ()
+                            {
+                                lbl_refresh_LinkClicked(null, null);
+                            });
                             break;
                     }
                 }
