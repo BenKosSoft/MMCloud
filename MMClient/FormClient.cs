@@ -29,18 +29,17 @@ namespace MMClient
 
         //for server response
         private static bool isFile; //indicates whether we are downloading the fileList or actual file
-        private static string currentFileName = Utility.UNNAMED_FILE;
         private StringBuilder FileList;
         private const int BUFFER_SIZE = 2097152; //2MB
         private static readonly byte[] responseBuffer = new byte[BUFFER_SIZE];
 
         //download path determined by the user
+        public string CurrentFileName { get; set; }
         public string DownloadPath { get; set; }
         private long CurrentFileListSize = 0;
         private long TotalFileListSize = 0;
         private long CurrentFileSize = 0;
         private long TotalFileSize = 0;
-        private ListViewItem CurrentFile = null;
 
         //background worker
         BackgroundWorker backgroundWorker = new BackgroundWorker();
@@ -57,6 +56,8 @@ namespace MMClient
             StartPosition = FormStartPosition.CenterScreen;
 
             FileList = new StringBuilder();
+            CurrentFileName = Utility.UNNAMED_FILE;
+            DownloadPath = Utility.UNNAMED_DIR;
 
             InitializeComponent();
             InitializeBackgroundWorker();
@@ -352,8 +353,6 @@ namespace MMClient
                 case DialogResult.OK:
                     //download button is pressed...
                     writeOnConsole("Downloading file: " + lv_fileList.SelectedItems[0].SubItems[0].Text + "...");
-                    CurrentFile = lv_fileList.SelectedItems[0];
-                    currentFileName = CurrentFile.SubItems[0].Text;
                     lv_fileList.Enabled = false;
                     lbl_refresh.Enabled = false;
                     btn_upload.Enabled = false;
@@ -627,8 +626,8 @@ namespace MMClient
         private void writeToFile(byte[] recBuf, int bytesRead)
         {
             string pathStr = Path.Combine(DownloadPath,
-                currentFileName.Contains(".") ? currentFileName.Substring(0, currentFileName.LastIndexOf('.'))
-                : currentFileName);
+                CurrentFileName.Contains(".") ? CurrentFileName.Substring(0, CurrentFileName.LastIndexOf('.'))
+                : CurrentFileName);
             pathStr += ".MMCloud";
 
             Utility.AppendAllBytes(pathStr, recBuf, bytesRead);
@@ -636,18 +635,17 @@ namespace MMClient
 
             if (CurrentFileSize >= TotalFileSize)
             {
-                string newPath = Path.Combine(DownloadPath, currentFileName);
+                string newPath = Path.Combine(DownloadPath, CurrentFileName);
                 if (File.Exists(newPath))
                     File.Delete(newPath);
 
                 File.Move(pathStr, newPath);
                 writeOnConsole(new StringBuilder().Append("File Download Finished: Filename = ")
-                    .Append(CurrentFile.SubItems[0].Text).Append(" Size= ")
+                    .Append(CurrentFileName).Append(" Size= ")
                     .Append(CurrentFileSize).ToString());
 
-                currentFileName = Utility.UNNAMED_FILE;
+                CurrentFileName = Utility.UNNAMED_FILE;
                 DownloadPath = Utility.UNNAMED_DIR;
-                CurrentFile = null;
                 CurrentFileSize = 0;
 
                 this.Invoke((MethodInvoker)delegate ()
