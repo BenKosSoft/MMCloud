@@ -26,7 +26,7 @@ common functionalities wil be connected in a proper manner.
 
 ## Features
 
-* __Client:__
+__Client:__
   * Provide input checks to confirm whether the entered input is in the appropriate format or not, prompts proper
     message if not.
   * Client login supports timeout for login operation, prompts appropriate message for failed connections (i.e. no
@@ -39,7 +39,7 @@ common functionalities wil be connected in a proper manner.
   * Client detects the server's availability during upload request, and automatically logs out the user.
   * If user wants to logout or terminate the application during an ongoing upload, he/she will be prompted to decide
     whether to cancel the upload  and leave or stay.
-* __Server__
+__Server:__
   * During initialization validity of port number and selected cloud path is checked, if any inconsistencies are found
     an appropriate prompt is shown to user.
   * The server can check if the user already active in the system.
@@ -49,4 +49,5 @@ common functionalities wil be connected in a proper manner.
     process.
   * After the termination of the program, when server is restarted previously selected cloud path will be remembered
     and filepath will be automatically filled with the previous selection.
-* All activities done by both client and server is printed to their respective rich text boxes.
+
+`All activities done by both client and server is printed to their respective rich text boxes.`
