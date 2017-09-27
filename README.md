@@ -3,8 +3,9 @@
 Windows application that provides Cloud file storage and file sharing solutions using TCP socket programming in C#
 
 **Designed & Implemented by:**
-  * Mert Kosan (@mertkosan)
-  * M.Mucahid Benlioglu (@mbenlioglu)
+
+* @mertkosan
+* @mbenlioglu
 
 ## Getting Started
 
@@ -25,7 +26,7 @@ common functionalities wil be connected in a proper manner.
 
 ## Features
 
-* **Client:**
+* __Client:__
   * Provide input checks to confirm whether the entered input is in the appropriate format or not, prompts proper
     message if not.
   * Client login supports timeout for login operation, prompts appropriate message for failed connections (i.e. no
@@ -38,7 +39,7 @@ common functionalities wil be connected in a proper manner.
   * Client detects the server's availability during upload request, and automatically logs out the user.
   * If user wants to logout or terminate the application during an ongoing upload, he/she will be prompted to decide
     whether to cancel the upload  and leave or stay.
-* **Server**
+* __Server__
   * During initialization validity of port number and selected cloud path is checked, if any inconsistencies are found
     an appropriate prompt is shown to user.
   * The server can check if the user already active in the system.
