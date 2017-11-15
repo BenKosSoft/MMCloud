@@ -3,9 +3,8 @@
 Windows application that provides Cloud file storage and file sharing solutions using TCP socket programming in C#
 
 **Designed & Implemented by:**
-
-* @mertkosan
-* @mbenlioglu
+ * [Mert Kosan](https://github.com/mertkosan)
+ * [M.Mucahid Benlioglu](https://github.com/mbenlioglu)
 
 ## Getting Started
 
